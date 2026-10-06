@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+inline constexpr TaskId kIdle = -1;  // timeline marker: nobody ran
 
 namespace cadence {
 
