@@ -31,6 +31,20 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
+add_library(cadence_core
+    src/task_state.cpp
+    src/operation.cpp
+    src/task.cpp
+    src/ready_queue.cpp        # <- add
+)
+
+add_executable(cadence_tests
+    tests/test_task_state.cpp
+    tests/test_operation.cpp
+    tests/test_task.cpp
+    tests/test_ready_queue.cpp # <- add
+)
+
 enable_testing()
 include(GoogleTest)
 
