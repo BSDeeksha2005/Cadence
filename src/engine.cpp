@@ -81,8 +81,19 @@ void Engine::dispatch() {
     }
 }
 
+void Engine::preempt_if_needed() {
+    if (running_ == kNone || ready_.empty()) return;
+    Slot& cur = slots_[running_];
+    if (ready_.peek_priority() > cur.task.base_priority()) {
+        cur.task.set_state(TaskState::Ready);
+        ready_.push(cur.task.id(), cur.task.base_priority());  // back of its level
+        running_ = kNone;
+    }
+}
+
 void Engine::step() {
     wake_sleepers();
+    preempt_if_needed();   // <- new
     dispatch();
 
     if (running_ == kNone) {

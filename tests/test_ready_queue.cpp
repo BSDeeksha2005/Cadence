@@ -81,3 +81,13 @@ TEST(ReadyQueueTest, EmptyPeekAndPopThrow) {
     EXPECT_THROW(q.peek(), std::logic_error);
     EXPECT_THROW(q.pop(), std::logic_error);
 }
+
+TEST(ReadyQueueTest, PeekPriorityReturnsBest) {
+    ReadyQueue q;
+    q.push(1, 3);
+    q.push(2, 7);
+    EXPECT_EQ(q.peek_priority(), 7);
+    EXPECT_EQ(q.size(), 2u);
+    ReadyQueue empty;
+    EXPECT_THROW(empty.peek_priority(), std::logic_error);
+}

@@ -49,16 +49,34 @@ TEST(EngineTest, SleepCreatesIdleGap) {
     EXPECT_EQ(e.now(), 4);
 }
 
-TEST(EngineTest, SleepingTaskYieldsCpuAndNoPreemptionYet) {
+TEST(EngineTest, HigherPriorityWakePreemptsAndResumes) {
     Engine e;
     e.add_task(Task(1, "hi", 9,
                     {Operation::compute(1), Operation::sleep(2),
                      Operation::compute(1)}));
     e.add_task(Task(2, "lo", 1, {Operation::compute(4)}));
     EXPECT_TRUE(e.run_until_done(20));
-    // hi wakes at tick 3 but lo keeps the CPU until its COMPUTE ends.
-    EXPECT_EQ(e.timeline(), (Timeline{1, 2, 2, 2, 2, 1}));
+    // hi wakes at tick 3, preempts lo (2 ticks left), lo resumes after.
+    EXPECT_EQ(e.timeline(), (Timeline{1, 2, 2, 1, 2, 2}));
     EXPECT_EQ(e.now(), 6);
+}
+
+TEST(EngineTest, EqualPriorityDoesNotPreempt) {
+    Engine e;
+    e.add_task(Task(1, "a", 5, {Operation::sleep(1), Operation::compute(1)}));
+    e.add_task(Task(2, "b", 5, {Operation::compute(3)}));
+    EXPECT_TRUE(e.run_until_done(20));
+    EXPECT_EQ(e.timeline(), (Timeline{2, 2, 2, 1}));
+}
+
+TEST(EngineTest, PreemptedTaskGoesToBackOfItsLevel) {
+    Engine e;
+    e.add_task(Task(1, "h", 9, {Operation::sleep(1), Operation::compute(1)}));
+    e.add_task(Task(2, "a", 1, {Operation::compute(3)}));
+    e.add_task(Task(3, "b", 1, {Operation::compute(1)}));
+    EXPECT_TRUE(e.run_until_done(20));
+    // a is preempted at tick 1 and queued behind b.
+    EXPECT_EQ(e.timeline(), (Timeline{2, 1, 3, 2, 2}));
 }
 
 TEST(EngineTest, LockNotImplementedYet) {

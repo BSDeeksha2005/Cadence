@@ -35,6 +35,7 @@ private:
     std::size_t index_of(TaskId id) const;
     static void settle(Slot& slot, Tick at);  // handle zero-time ops
     void wake_sleepers();
+    void preempt_if_needed();
     void dispatch();
 
     std::vector<Slot> slots_;  // insertion order = deterministic iteration

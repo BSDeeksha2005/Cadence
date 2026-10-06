@@ -6,6 +6,7 @@
 
 #include "cadence/types.hpp"
 
+
 namespace cadence {
 
 // Holds ready tasks and picks the next one deterministically:
@@ -13,7 +14,8 @@ namespace cadence {
 class ReadyQueue {
 public:
     void push(TaskId id, Priority priority);  // throws if id already queued
-    TaskId peek() const;                      // throws if empty
+    TaskId peek() const;       
+    Priority peek_priority() const;           // priority of the best entry; throws if empty               // throws if empty
     TaskId pop();                             // throws if empty
     bool remove(TaskId id);                   // true if it was queued
     bool contains(TaskId id) const;

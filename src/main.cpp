@@ -4,6 +4,8 @@
 #include "cadence/operation.hpp"
 #include "cadence/task.hpp"
 
+
+
 int main() {
     using cadence::Operation;
 
@@ -14,8 +16,8 @@ int main() {
     engine.add_task(cadence::Task(2, "logger", 1, {Operation::compute(4)}));
 
     engine.run_until_done(50);
-
-    std::cout << "Cadence v0.1.0 - Step 3\nTimeline: ";
+    
+    std::cout << "Cadence v0.1.0 - Step 4\nTimeline: ";
     for (cadence::TaskId id : engine.timeline()) {
         if (id == cadence::kIdle) {
             std::cout << "-- ";

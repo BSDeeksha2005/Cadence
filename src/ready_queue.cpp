@@ -60,4 +60,8 @@ bool ReadyQueue::contains(TaskId id) const {
     return false;
 }
 
+Priority ReadyQueue::peek_priority() const {
+    return entries_[best_index()].priority;
+}
+
 }  // namespace cadence
