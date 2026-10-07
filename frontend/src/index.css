@@ -1,0 +1,185 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f4f1ea;
+  --surface: #ece7db;
+  --elevated: #f8f5ee;
+  --text: #232019;
+  --text-secondary: #6a6358;
+  --text-muted: #8f877a;
+  --border: #d6cfc0;
+  --border-strong: #b8b0a0;
+  --accent: #2f5868;
+  --accent-soft: #e3eaed;
+  --accent-text: #f4f1ea;
+  --blocked: #9c6b5a;
+  --blocked-soft: #e8d5cf;
+  --blocked-text: #6b4438;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.font-mono {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button,
+select,
+input {
+  font-family: inherit;
+}
+
+/* Thin, restrained scrollbars */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Builder form controls */
+.cad-input {
+  background-color: var(--elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  color: var(--text);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
+.cad-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.cad-input::placeholder {
+  color: var(--text-muted);
+}
+.cad-input:invalid {
+  border-color: var(--blocked);
+}
+
+.cad-select {
+  background-color: var(--elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  color: var(--text);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='%238f877a' stroke-width='1.5' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.cad-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.cad-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-weight: 500;
+  padding: 5px 12px;
+  border: 1px solid var(--border-strong);
+  background-color: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.cad-btn:hover {
+  background-color: var(--surface);
+  border-color: var(--text-muted);
+}
+.cad-btn-primary {
+  background-color: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  font-weight: 600;
+  padding: 8px 24px;
+  font-size: 14px;
+}
+.cad-btn-primary:hover {
+  background-color: #264a5a;
+  border-color: #264a5a;
+}
+.cad-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.cad-btn-ghost {
+  border-color: transparent;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.cad-btn-ghost:hover {
+  background-color: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+.cad-btn-danger {
+  border-color: transparent;
+  color: var(--blocked-text);
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.cad-btn-danger:hover {
+  background-color: var(--blocked-soft);
+  border-color: var(--blocked);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
