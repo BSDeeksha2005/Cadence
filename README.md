@@ -68,14 +68,14 @@ target for the engine and are **not yet reproduced by code**.
 ## Roadmap
 
 - [x] 1. Task model, states, operations
-- [ ] 2. Ready queue
-- [ ] 3. Scheduler selection
-- [ ] 4. Tick engine
-- [ ] 5. Preemption
-- [ ] 6. Mutex and locking
-- [ ] 7. Blocking
-- [ ] 8. Priority inversion
-- [ ] 9. Priority inheritance
+- [x] 2. Ready queue
+- [x] 3. Scheduler selection
+- [x] 4. Tick engine
+- [x] 5. Preemption
+- [x] 6. Mutex and locking
+- [x] 7. Blocking
+- [x] 8. Priority inversion
+- [x] 9. Priority inheritance
 - [ ] 10. Multiple waiters, nested locks, propagation
 - [ ] 11. Deadlock detection
 - [ ] 12. Metrics and event trace
