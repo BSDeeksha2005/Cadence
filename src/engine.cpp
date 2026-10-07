@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 namespace cadence {
 
@@ -21,7 +22,9 @@ const Task& Engine::task(TaskId id) const {
     return slots_[index_of(id)].task;
 }
 
-Engine::MutexSlot& Engine::get_or_create_mutex(MutexId id) {
+Engine::MutexSlot& Engine::get_or_create_mutex(
+    MutexId id
+) {
     for (MutexSlot& mutex : mutexes_) {
         if (mutex.id == id) {
             return mutex;
@@ -34,16 +37,16 @@ Engine::MutexSlot& Engine::get_or_create_mutex(MutexId id) {
         );
     }
 
-    mutexes_.push_back(MutexSlot{
-        id,
-        kIdle,
-        {}
-    });
+    mutexes_.push_back(
+        MutexSlot{id, kIdle, {}}
+    );
 
     return mutexes_.back();
 }
 
-const Engine::MutexSlot* Engine::find_mutex(MutexId id) const {
+const Engine::MutexSlot* Engine::find_mutex(
+    MutexId id
+) const {
     for (const MutexSlot& mutex : mutexes_) {
         if (mutex.id == id) {
             return &mutex;
@@ -63,7 +66,9 @@ TaskId Engine::mutex_owner(MutexId id) const {
     return mutex->owner;
 }
 
-std::vector<TaskId> Engine::mutex_waiters(MutexId id) const {
+std::vector<TaskId> Engine::mutex_waiters(
+    MutexId id
+) const {
     const MutexSlot* mutex = find_mutex(id);
 
     if (mutex == nullptr) {
@@ -89,24 +94,32 @@ void Engine::add_task(Task task) {
     }
 
     const TaskId id = task.id();
-    const Priority priority = task.base_priority();
 
-    slots_.push_back(Slot{
-        std::move(task),
-        0,
-        0,
-        0,
-        kNoMutex,
-        {}
-    });
+    slots_.push_back(
+        Slot{
+            std::move(task),
+            0,
+            0,
+            0,
+            kNoMutex,
+            {}
+        }
+    );
 
-    slots_.back().task.set_state(TaskState::Ready);
-    ready_.push(id, priority);
+    slots_.back().task.set_state(
+        TaskState::Ready
+    );
+
+    ready_.push(
+        id,
+        slots_.back().task.effective_priority()
+    );
 }
 
 bool Engine::all_completed() const {
     for (const Slot& slot : slots_) {
-        if (slot.task.state() != TaskState::Completed) {
+        if (slot.task.state() !=
+            TaskState::Completed) {
             return false;
         }
     }
@@ -157,6 +170,146 @@ void Engine::remove_held_mutex(
     slot.held_mutexes.erase(it);
 }
 
+Priority Engine::calculate_effective_priority(
+    TaskId id
+) const {
+    const Slot& slot = slots_[index_of(id)];
+
+    Priority effective =
+        slot.task.base_priority();
+
+    if (protocol_ == Protocol::NONE) {
+        return effective;
+    }
+
+    for (MutexId mutex_id : slot.held_mutexes) {
+        const MutexSlot* mutex =
+            find_mutex(mutex_id);
+
+        if (mutex == nullptr) {
+            throw std::logic_error(
+                "held mutex does not exist"
+            );
+        }
+
+        for (TaskId waiter_id : mutex->waiters) {
+            const Priority waiter_eff =
+                task(waiter_id).effective_priority();
+
+            if (waiter_eff > effective) {
+                effective = waiter_eff;
+            }
+        }
+    }
+
+    return effective;
+}
+
+void Engine::recompute_priority(TaskId id) {
+    Slot& slot = slots_[index_of(id)];
+
+    const Priority old_priority =
+        slot.task.effective_priority();
+
+    const Priority new_priority =
+        calculate_effective_priority(id);
+
+    if (old_priority == new_priority) {
+        return;
+    }
+
+    slot.task.set_effective_priority(
+        new_priority
+    );
+
+    if (slot.task.state() == TaskState::Ready) {
+        if (!ready_.remove(id)) {
+            throw std::logic_error(
+                "READY task missing from ReadyQueue"
+            );
+        }
+
+        ready_.push(
+            id,
+            new_priority
+        );
+    }
+}
+
+void Engine::propagate_priority(TaskId id) {
+    std::vector<TaskId> seen;
+
+    TaskId current = id;
+
+    while (current != kIdle) {
+        if (std::find(
+                seen.begin(),
+                seen.end(),
+                current
+            ) != seen.end()) {
+
+            throw std::logic_error(
+                "priority inheritance cycle"
+            );
+        }
+
+        seen.push_back(current);
+
+        Slot& slot =
+            slots_[index_of(current)];
+
+        const Priority old_priority =
+            slot.task.effective_priority();
+
+        const Priority new_priority =
+            calculate_effective_priority(
+                current
+            );
+
+        if (old_priority == new_priority) {
+            break;
+        }
+
+        slot.task.set_effective_priority(
+            new_priority
+        );
+
+        if (slot.task.state() ==
+            TaskState::Ready) {
+
+            if (!ready_.remove(current)) {
+                throw std::logic_error(
+                    "READY task missing from ReadyQueue"
+                );
+            }
+
+            ready_.push(
+                current,
+                new_priority
+            );
+        }
+
+        if (slot.task.state() ==
+                TaskState::Blocked &&
+            slot.blocked_on != kNoMutex) {
+
+            const MutexSlot* blocked_mutex =
+                find_mutex(slot.blocked_on);
+
+            if (blocked_mutex == nullptr) {
+                throw std::logic_error(
+                    "blocked mutex does not exist"
+                );
+            }
+
+            current = blocked_mutex->owner;
+            continue;
+        }
+
+        break;
+    }
+}
+
 std::size_t Engine::choose_waiter_index(
     const MutexSlot& mutex
 ) const {
@@ -171,18 +324,21 @@ std::size_t Engine::choose_waiter_index(
     for (std::size_t i = 1;
          i < mutex.waiters.size();
          ++i) {
-        const TaskId candidate_id = mutex.waiters[i];
-        const TaskId best_id = mutex.waiters[best];
 
-        const Priority candidate_priority =
-            task(candidate_id).base_priority();
+        const Priority candidate =
+            task(mutex.waiters[i])
+                .effective_priority();
 
-        const Priority best_priority =
-            task(best_id).base_priority();
+        const Priority current_best =
+            task(mutex.waiters[best])
+                .effective_priority();
 
-        if (candidate_priority > best_priority) {
+        if (candidate > current_best) {
             best = i;
         }
+
+        // Equal priority deliberately does nothing:
+        // earlier waiter wins.
     }
 
     return best;
@@ -190,34 +346,41 @@ std::size_t Engine::choose_waiter_index(
 
 void Engine::wake_sleepers() {
     for (Slot& slot : slots_) {
-        if (slot.task.state() == TaskState::Sleeping &&
+        if (slot.task.state() ==
+                TaskState::Sleeping &&
             slot.wake_at <= now_) {
 
-            slot.task.set_state(TaskState::Ready);
+            slot.task.set_state(
+                TaskState::Ready
+            );
 
             ready_.push(
                 slot.task.id(),
-                slot.task.base_priority()
+                slot.task.effective_priority()
             );
         }
     }
 }
 
 void Engine::preempt_if_needed() {
-    if (running_ == kNone || ready_.empty()) {
+    if (running_ == kNone ||
+        ready_.empty()) {
         return;
     }
 
-    Slot& current = slots_[running_];
+    Slot& current =
+        slots_[running_];
 
     if (ready_.peek_priority() >
-        current.task.base_priority()) {
+        current.task.effective_priority()) {
 
-        current.task.set_state(TaskState::Ready);
+        current.task.set_state(
+            TaskState::Ready
+        );
 
         ready_.push_front(
             current.task.id(),
-            current.task.base_priority()
+            current.task.effective_priority()
         );
 
         running_ = kNone;
@@ -231,7 +394,9 @@ void Engine::resolve() {
                 return;
             }
 
-            const TaskId next = ready_.pop();
+            const TaskId next =
+                ready_.pop();
+
             running_ = index_of(next);
 
             slots_[running_].task.set_state(
@@ -245,17 +410,22 @@ void Engine::resolve() {
             }
         }
 
-        Slot& slot = slots_[running_];
+        Slot& slot =
+            slots_[running_];
 
-        // Implicit END.
-        if (slot.pc >= slot.task.program().size()) {
+        if (slot.pc >=
+            slot.task.program().size()) {
+
             if (!slot.held_mutexes.empty()) {
                 throw std::logic_error(
                     "task completed while holding a mutex"
                 );
             }
 
-            slot.task.set_state(TaskState::Completed);
+            slot.task.set_state(
+                TaskState::Completed
+            );
+
             running_ = kNone;
             continue;
         }
@@ -266,27 +436,39 @@ void Engine::resolve() {
         switch (op.type()) {
             case OpType::Compute: {
                 if (slot.remaining == 0) {
-                    slot.remaining = op.ticks();
+                    slot.remaining =
+                        op.ticks();
                 }
 
                 return;
             }
 
             case OpType::Sleep: {
-                slot.task.set_state(TaskState::Sleeping);
-                slot.wake_at = now_ + op.ticks();
+                slot.task.set_state(
+                    TaskState::Sleeping
+                );
+
+                slot.wake_at =
+                    now_ + op.ticks();
+
                 ++slot.pc;
+
                 running_ = kNone;
+
                 continue;
             }
 
             case OpType::Lock: {
-                const MutexId mutex_id = op.mutex();
+                const MutexId mutex_id =
+                    op.mutex();
 
                 MutexSlot& mutex =
-                    get_or_create_mutex(mutex_id);
+                    get_or_create_mutex(
+                        mutex_id
+                    );
 
-                const TaskId task_id = slot.task.id();
+                const TaskId task_id =
+                    slot.task.id();
 
                 if (mutex.owner == task_id) {
                     throw std::logic_error(
@@ -303,26 +485,47 @@ void Engine::resolve() {
                     );
 
                     ++slot.pc;
+
                     continue;
                 }
 
-                slot.task.set_state(TaskState::Blocked);
-                slot.blocked_on = mutex_id;
-                mutex.waiters.push_back(task_id);
+                slot.task.set_state(
+                    TaskState::Blocked
+                );
+
+                slot.blocked_on =
+                    mutex_id;
+
+                mutex.waiters.push_back(
+                    task_id
+                );
+
                 running_ = kNone;
+
+                if (protocol_ ==
+                    Protocol::PIP) {
+
+                    propagate_priority(
+                        mutex.owner
+                    );
+                }
 
                 continue;
             }
 
             case OpType::Unlock: {
-                const MutexId mutex_id = op.mutex();
+                const MutexId mutex_id =
+                    op.mutex();
 
                 MutexSlot& mutex =
-                    get_or_create_mutex(mutex_id);
+                    get_or_create_mutex(
+                        mutex_id
+                    );
 
-                const TaskId task_id = slot.task.id();
+                const TaskId owner_id =
+                    slot.task.id();
 
-                if (mutex.owner != task_id) {
+                if (mutex.owner != owner_id) {
                     throw std::logic_error(
                         "task does not own mutex"
                     );
@@ -337,40 +540,71 @@ void Engine::resolve() {
 
                 if (mutex.waiters.empty()) {
                     mutex.owner = kIdle;
+
+                    if (protocol_ ==
+                        Protocol::PIP) {
+
+                        recompute_priority(
+                            owner_id
+                        );
+                    }
+
                     continue;
                 }
 
                 const std::size_t waiter_index =
-                    choose_waiter_index(mutex);
+                    choose_waiter_index(
+                        mutex
+                    );
 
                 const TaskId waiter_id =
                     mutex.waiters[waiter_index];
 
                 mutex.waiters.erase(
                     mutex.waiters.begin() +
-                    static_cast<std::ptrdiff_t>(
-                        waiter_index
-                    )
+                    static_cast<
+                        std::ptrdiff_t
+                    >(waiter_index)
                 );
 
                 mutex.owner = waiter_id;
 
                 Slot& waiter =
-                    slots_[index_of(waiter_id)];
+                    slots_[index_of(
+                        waiter_id
+                    )];
 
                 add_held_mutex(
                     waiter,
                     mutex_id
                 );
 
-                waiter.blocked_on = kNoMutex;
+                // Keep it BLOCKED until its cached
+                // effective priority has been recomputed.
+                waiter.blocked_on =
+                    kNoMutex;
+
                 ++waiter.pc;
 
-                waiter.task.set_state(TaskState::Ready);
+                if (protocol_ ==
+                    Protocol::PIP) {
+
+                    recompute_priority(
+                        owner_id
+                    );
+
+                    recompute_priority(
+                        waiter_id
+                    );
+                }
+
+                waiter.task.set_state(
+                    TaskState::Ready
+                );
 
                 ready_.push(
                     waiter_id,
-                    waiter.task.base_priority()
+                    waiter.task.effective_priority()
                 );
 
                 continue;
@@ -389,13 +623,16 @@ void Engine::step() {
     // B3
     resolve();
 
-    // B5 / tick execution
+    // Tick execution
     if (running_ == kNone) {
         timeline_.push_back(kIdle);
     } else {
-        Slot& slot = slots_[running_];
+        Slot& slot =
+            slots_[running_];
 
-        timeline_.push_back(slot.task.id());
+        timeline_.push_back(
+            slot.task.id()
+        );
 
         if (slot.remaining <= 0) {
             throw std::logic_error(
@@ -408,8 +645,9 @@ void Engine::step() {
         if (slot.remaining == 0) {
             ++slot.pc;
 
-            // Final COMPUTE completed at this instant.
-            if (slot.pc >= slot.task.program().size()) {
+            if (slot.pc >=
+                slot.task.program().size()) {
+
                 if (!slot.held_mutexes.empty()) {
                     throw std::logic_error(
                         "task completed while holding a mutex"
@@ -425,7 +663,6 @@ void Engine::step() {
         }
     }
 
-    // B6
     ++now_;
 }
 
@@ -441,7 +678,9 @@ void Engine::run(Tick ticks) {
     }
 }
 
-bool Engine::run_until_done(Tick max_ticks) {
+bool Engine::run_until_done(
+    Tick max_ticks
+) {
     if (max_ticks < 0) {
         throw std::invalid_argument(
             "max_ticks cannot be negative"

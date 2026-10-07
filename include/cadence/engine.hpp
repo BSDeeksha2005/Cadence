@@ -9,29 +9,43 @@
 
 namespace cadence {
 
+enum class Protocol {
+    NONE,
+    PIP
+};
+
 class Engine {
 public:
-    void add_task(Task task);  // only before the first tick; ids must be unique
+    explicit Engine(Protocol protocol = Protocol::NONE)
+        : protocol_(protocol) {}
 
-    void step();                          // simulate exactly one tick
-    void run(Tick ticks);                 // step() n times
-    bool run_until_done(Tick max_ticks);  // true if everything completed
+    void add_task(Task task);
 
-    Tick now() const { return now_; }
+    void step();
+    void run(Tick ticks);
+    bool run_until_done(Tick max_ticks);
+
+    Tick now() const {
+        return now_;
+    }
+
     bool all_completed() const;
+
+    Protocol protocol() const {
+        return protocol_;
+    }
 
     const std::vector<TaskId>& timeline() const {
         return timeline_;
     }
 
-    const Task& task(TaskId id) const;  // throws std::out_of_range
+    const Task& task(TaskId id) const;
 
-    // Step 6 inspection helpers.
-    // Return kIdle when the mutex does not currently exist or is unlocked.
     TaskId mutex_owner(MutexId id) const;
 
-    // Returns waiter order exactly as stored by the mutex.
-    std::vector<TaskId> mutex_waiters(MutexId id) const;
+    std::vector<TaskId> mutex_waiters(
+        MutexId id
+    ) const;
 
 private:
     static constexpr std::size_t kNone =
@@ -47,9 +61,9 @@ private:
 
     struct Slot {
         Task task;
-        std::size_t pc;   // current operation
-        Tick remaining;   // ticks left in current COMPUTE
-        Tick wake_at;     // wake instant for SLEEP
+        std::size_t pc;
+        Tick remaining;
+        Tick wake_at;
         MutexId blocked_on;
         std::vector<MutexId> held_mutexes;
     };
@@ -57,18 +71,43 @@ private:
     std::size_t index_of(TaskId id) const;
 
     MutexSlot& get_or_create_mutex(MutexId id);
-    const MutexSlot* find_mutex(MutexId id) const;
 
-    void resolve();
-    void wake_sleepers();
-    void preempt_if_needed();
+    const MutexSlot* find_mutex(
+        MutexId id
+    ) const;
 
-    void add_held_mutex(Slot& slot, MutexId mutex);
-    void remove_held_mutex(Slot& slot, MutexId mutex);
-    bool holds_mutex(const Slot& slot, MutexId mutex) const;
+    bool holds_mutex(
+        const Slot& slot,
+        MutexId mutex
+    ) const;
+
+    void add_held_mutex(
+        Slot& slot,
+        MutexId mutex
+    );
+
+    void remove_held_mutex(
+        Slot& slot,
+        MutexId mutex
+    );
 
     std::size_t choose_waiter_index(
-        const MutexSlot& mutex) const;
+        const MutexSlot& mutex
+    ) const;
+
+    Priority calculate_effective_priority(
+        TaskId id
+    ) const;
+
+    void recompute_priority(TaskId id);
+
+    void propagate_priority(TaskId id);
+
+    void resolve();
+
+    void wake_sleepers();
+
+    void preempt_if_needed();
 
     std::vector<Slot> slots_;
     std::vector<MutexSlot> mutexes_;
@@ -77,6 +116,8 @@ private:
 
     std::size_t running_ = kNone;
     Tick now_ = 0;
+
+    Protocol protocol_ = Protocol::NONE;
 
     std::vector<TaskId> timeline_;
 };

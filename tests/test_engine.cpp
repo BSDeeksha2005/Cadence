@@ -610,3 +610,261 @@ TEST(EngineTest, CompletingWhileHoldingMutexThrows) {
         std::logic_error
     );
 }
+
+// -----------------------------
+// Step 7: Priority Inheritance
+// -----------------------------
+
+TEST(PriorityInheritanceTest, NoneKeepsBasePriority) {
+    Engine e(cadence::Protocol::NONE);
+
+    e.add_task(Task(
+        1,
+        "L",
+        1,
+        {
+            Operation::lock(0),
+            Operation::compute(3),
+            Operation::unlock(0),
+            Operation::compute(1)
+        }
+    ));
+
+    e.add_task(Task(
+        2,
+        "M",
+        2,
+        {
+            Operation::sleep(1),
+            Operation::compute(2)
+        }
+    ));
+
+    e.add_task(Task(
+        3,
+        "H",
+        3,
+        {
+            Operation::sleep(2),
+            Operation::lock(0),
+            Operation::compute(1),
+            Operation::unlock(0)
+        }
+    ));
+
+    e.step();
+    e.step();
+    e.step();
+
+    EXPECT_EQ(
+        e.task(1).effective_priority(),
+        1
+    );
+
+    EXPECT_EQ(
+        e.task(3).state(),
+        TaskState::Blocked
+    );
+
+    EXPECT_EQ(
+        e.mutex_owner(0),
+        1
+    );
+
+    EXPECT_TRUE(
+        e.run_until_done(20)
+    );
+
+    EXPECT_EQ(
+        e.timeline(),
+        (Timeline{1, 2, 2, 1, 1, 3, 1})
+    );
+}
+
+TEST(PriorityInheritanceTest, PIPBoostsOwner) {
+    Engine e(cadence::Protocol::PIP);
+
+    e.add_task(Task(
+        1,
+        "L",
+        1,
+        {
+            Operation::lock(0),
+            Operation::compute(3),
+            Operation::unlock(0),
+            Operation::compute(1)
+        }
+    ));
+
+    e.add_task(Task(
+        2,
+        "M",
+        2,
+        {
+            Operation::sleep(1),
+            Operation::compute(2)
+        }
+    ));
+
+    e.add_task(Task(
+        3,
+        "H",
+        3,
+        {
+            Operation::sleep(2),
+            Operation::lock(0),
+            Operation::compute(1),
+            Operation::unlock(0)
+        }
+    ));
+
+    e.step();  // tick 0: L runs
+    e.step();  // tick 1: M runs
+    e.step();  // tick 2: H blocks, L inherits 3
+
+    EXPECT_EQ(
+        e.task(1).effective_priority(),
+        3
+    );
+
+    EXPECT_EQ(
+        e.task(3).state(),
+        TaskState::Blocked
+    );
+
+    EXPECT_EQ(
+        e.mutex_owner(0),
+        1
+    );
+
+    EXPECT_EQ(
+        e.timeline(),
+        (Timeline{1, 2, 1})
+    );
+
+    // tick 3: L finishes its final COMPUTE.
+    // UNLOCK executes at the next boundary.
+    e.step();
+
+    EXPECT_EQ(
+        e.task(1).effective_priority(),
+        3
+    );
+
+    EXPECT_EQ(
+        e.mutex_owner(0),
+        1
+    );
+
+    // tick 4 boundary: L executes UNLOCK,
+    // hands R directly to H, then loses inheritance.
+    e.step();
+
+    EXPECT_EQ(
+        e.task(1).effective_priority(),
+        1
+    );
+
+    EXPECT_EQ(
+        e.mutex_owner(0),
+        3
+    );
+
+    EXPECT_TRUE(
+        e.run_until_done(20)
+    );
+
+    EXPECT_EQ(
+        e.timeline(),
+        (Timeline{1, 2, 1, 1, 3, 2, 1})
+    );
+}
+TEST(PriorityInheritanceTest,
+     ChainedInheritancePropagates) {
+    Engine e(cadence::Protocol::PIP);
+
+    // L owns R2.
+    e.add_task(Task(
+        1,
+        "L",
+        1,
+        {
+            Operation::lock(2),
+            Operation::compute(3),
+            Operation::unlock(2)
+        }
+    ));
+
+    // M owns R1, then blocks on R2.
+    e.add_task(Task(
+        2,
+        "M",
+        2,
+        {
+            Operation::sleep(1),
+            Operation::lock(1),
+            Operation::lock(2),
+            Operation::compute(1),
+            Operation::unlock(2),
+            Operation::unlock(1)
+        }
+    ));
+
+    // H blocks on R1, which M owns.
+    e.add_task(Task(
+        3,
+        "H",
+        3,
+        {
+            Operation::sleep(2),
+            Operation::lock(1),
+            Operation::compute(1),
+            Operation::unlock(1)
+        }
+    ));
+
+    e.step();  // L runs
+    e.step();  // M blocks on L's R2
+    e.step();  // H blocks on M's R1
+
+    EXPECT_EQ(
+        e.task(2).effective_priority(),
+        3
+    );
+
+    EXPECT_EQ(
+        e.task(1).effective_priority(),
+        3
+    );
+
+    EXPECT_EQ(
+        e.task(3).state(),
+        TaskState::Blocked
+    );
+
+    EXPECT_EQ(
+        e.mutex_owner(2),
+        1
+    );
+
+    e.step();  // L hands R2 to M
+
+    EXPECT_EQ(
+        e.task(1).effective_priority(),
+        1
+    );
+
+    EXPECT_EQ(
+        e.task(2).effective_priority(),
+        3
+    );
+
+    EXPECT_EQ(
+        e.mutex_owner(2),
+        2
+    );
+
+    EXPECT_TRUE(
+        e.run_until_done(30)
+    );
+}
