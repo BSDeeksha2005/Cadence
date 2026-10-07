@@ -6,18 +6,21 @@
 
 #include "cadence/types.hpp"
 
-
 namespace cadence {
 
 // Holds ready tasks and picks the next one deterministically:
-// highest priority first, FIFO among equal priorities.
+// highest priority first, FIFO among normally-ready equal priorities.
+// Preempted tasks can explicitly be placed at the head of their level.
 class ReadyQueue {
 public:
-    void push(TaskId id, Priority priority);  // throws if id already queued
-    TaskId peek() const;       
-    Priority peek_priority() const;           // priority of the best entry; throws if empty               // throws if empty
-    TaskId pop();                             // throws if empty
-    bool remove(TaskId id);                   // true if it was queued
+    void push(TaskId id, Priority priority);       // add to tail
+    void push_front(TaskId id, Priority priority); // add to head
+
+    TaskId peek() const;
+    Priority peek_priority() const;
+    TaskId pop();
+
+    bool remove(TaskId id);
     bool contains(TaskId id) const;
 
     bool empty() const { return entries_.empty(); }
@@ -27,7 +30,7 @@ private:
     struct Entry {
         TaskId id;
         Priority priority;
-        std::uint64_t seq;  // insertion order, breaks ties
+        std::uint64_t seq;
     };
 
     // The ONLY place that defines scheduling order.
@@ -36,7 +39,10 @@ private:
     std::size_t best_index() const;
 
     std::vector<Entry> entries_;
-    std::uint64_t next_seq_ = 0;
+
+    // Normal entries start at 1.
+    // seq == 0 is reserved for a preempted task at the head.
+    std::uint64_t next_seq_ = 1;
 };
 
 }  // namespace cadence

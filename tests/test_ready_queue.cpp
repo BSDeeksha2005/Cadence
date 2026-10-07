@@ -8,15 +8,18 @@ using cadence::ReadyQueue;
 
 TEST(ReadyQueueTest, StartsEmpty) {
     ReadyQueue q;
+
     EXPECT_TRUE(q.empty());
     EXPECT_EQ(q.size(), 0u);
 }
 
 TEST(ReadyQueueTest, PopsHighestPriorityFirst) {
     ReadyQueue q;
+
     q.push(1, 2);
     q.push(2, 9);
     q.push(3, 5);
+
     EXPECT_EQ(q.pop(), 2);
     EXPECT_EQ(q.pop(), 3);
     EXPECT_EQ(q.pop(), 1);
@@ -25,9 +28,11 @@ TEST(ReadyQueueTest, PopsHighestPriorityFirst) {
 
 TEST(ReadyQueueTest, EqualPriorityIsFifo) {
     ReadyQueue q;
+
     q.push(10, 5);
     q.push(11, 5);
     q.push(12, 5);
+
     EXPECT_EQ(q.pop(), 10);
     EXPECT_EQ(q.pop(), 11);
     EXPECT_EQ(q.pop(), 12);
@@ -35,34 +40,80 @@ TEST(ReadyQueueTest, EqualPriorityIsFifo) {
 
 TEST(ReadyQueueTest, FifoIsByArrivalNotById) {
     ReadyQueue q;
+
     q.push(9, 5);
     q.push(1, 5);
+
     EXPECT_EQ(q.pop(), 9);
     EXPECT_EQ(q.pop(), 1);
 }
 
 TEST(ReadyQueueTest, RePushGoesToBackOfItsLevel) {
     ReadyQueue q;
+
     q.push(1, 5);
     q.push(2, 5);
+
     EXPECT_EQ(q.pop(), 1);
+
     q.push(1, 5);
+
     EXPECT_EQ(q.pop(), 2);
     EXPECT_EQ(q.pop(), 1);
 }
 
+TEST(ReadyQueueTest, PushFrontPlacesTaskAtHead) {
+    ReadyQueue q;
+
+    q.push(2, 1);
+    q.push(3, 1);
+    q.push_front(1, 1);
+
+    EXPECT_EQ(q.pop(), 1);
+    EXPECT_EQ(q.pop(), 2);
+    EXPECT_EQ(q.pop(), 3);
+}
+
+TEST(ReadyQueueTest, MultiplePushFrontsNewestIsFirst) {
+    ReadyQueue q;
+
+    q.push(2, 1);
+    q.push_front(1, 1);
+    q.push_front(3, 1);
+
+    EXPECT_EQ(q.pop(), 3);
+    EXPECT_EQ(q.pop(), 1);
+    EXPECT_EQ(q.pop(), 2);
+}
+
+TEST(ReadyQueueTest, PushStillPlacesNormalTaskAtTail) {
+    ReadyQueue q;
+
+    q.push(1, 1);
+    q.push_front(2, 1);
+    q.push(3, 1);
+
+    EXPECT_EQ(q.pop(), 2);
+    EXPECT_EQ(q.pop(), 1);
+    EXPECT_EQ(q.pop(), 3);
+}
+
 TEST(ReadyQueueTest, PeekDoesNotRemove) {
     ReadyQueue q;
+
     q.push(1, 3);
     q.push(2, 7);
+
     EXPECT_EQ(q.peek(), 2);
     EXPECT_EQ(q.size(), 2u);
 }
 
 TEST(ReadyQueueTest, RemoveAndContains) {
     ReadyQueue q;
+
     q.push(1, 3);
     q.push(2, 7);
+
     EXPECT_TRUE(q.contains(1));
     EXPECT_TRUE(q.remove(1));
     EXPECT_FALSE(q.contains(1));
@@ -72,22 +123,35 @@ TEST(ReadyQueueTest, RemoveAndContains) {
 
 TEST(ReadyQueueTest, DuplicatePushThrows) {
     ReadyQueue q;
+
     q.push(1, 3);
-    EXPECT_THROW(q.push(1, 3), std::logic_error);
+
+    EXPECT_THROW(
+        q.push(1, 3),
+        std::logic_error
+    );
 }
 
 TEST(ReadyQueueTest, EmptyPeekAndPopThrow) {
     ReadyQueue q;
+
     EXPECT_THROW(q.peek(), std::logic_error);
     EXPECT_THROW(q.pop(), std::logic_error);
 }
 
 TEST(ReadyQueueTest, PeekPriorityReturnsBest) {
     ReadyQueue q;
+
     q.push(1, 3);
     q.push(2, 7);
+
     EXPECT_EQ(q.peek_priority(), 7);
     EXPECT_EQ(q.size(), 2u);
+
     ReadyQueue empty;
-    EXPECT_THROW(empty.peek_priority(), std::logic_error);
+
+    EXPECT_THROW(
+        empty.peek_priority(),
+        std::logic_error
+    );
 }
