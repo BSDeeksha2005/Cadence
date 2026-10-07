@@ -2,84 +2,37 @@
 
 **Deterministic Real-Time Scheduling & Priority Inversion Simulator**
 
-Cadence is a single-threaded, deterministic simulator of a fixed-priority
-preemptive scheduler (one CPU, integer ticks). It exists to reproduce
-**priority inversion** exactly, apply **priority inheritance**, and test
-that the fix behaves correctly.
+Cadence is a single-threaded, deterministic simulator of fixed-priority
+preemptive scheduling on one CPU. It models mutex blocking, priority
+inversion, Priority Inheritance Protocol (PIP), deadlock detection, a
+canonical event trace, tick snapshots, and post-hoc scheduling metrics.
 
-It is a simulator, not an RTOS. Simulated tasks do not use OS threads; the
-same scenario always produces the same trace.
+It is a simulator, not an RTOS. Simulated tasks do not use OS threads.
 
-## Status
+## v0.1 status
 
-Work in progress. See the roadmap below for what exists today.
+The normative v0.1 engine is implemented through:
 
-## Build and test (macOS / Linux)
+- task/release/deadline semantics
+- deterministic FIFO ready queues
+- fixed-priority preemption
+- mutex ownership, direct handoff, and blocking
+- priority inversion under `NONE`
+- priority inheritance under `PIP`
+- chained inheritance and multiple waiters
+- dynamic deadlock detection
+- deterministic events and per-tick snapshots
+- post-hoc metrics
+- invariant checking
+- golden S1 scenario
+- determinism hash and declaration-order tests
+- a small CLI for comparing `NONE` and `PIP`
+
+`SEMANTICS.md` remains the normative source.
+
+## Build and test
 
 ```bash
 cmake -S . -B build
 cmake --build build
-./build/cadence
 ctest --test-dir build --output-on-failure
-```
-
-With sanitizers:
-
-```bash
-cmake -S . -B build-san -DCADENCE_SANITIZE=ON
-cmake --build build-san
-./build-san/cadence_tests
-```
-
-## Layout
-
-```
-include/cadence/   public headers (core model and engine)
-src/               implementation and the CLI entry point
-tests/             GoogleTest unit and scenario tests
-scenarios/         scenario files (later)
-SEMANTICS.md       the normative specification
-```
-
-## Specification
-
-All behavior is defined in [SEMANTICS.md](SEMANTICS.md). If the code and the
-spec disagree, one of them is wrong and the spec is updated first.
-
-## Golden scenario S1 (expected, from the spec)
-
-These numbers are derived by hand in SEMANTICS.md Appendix A. They are the
-target for the engine and are **not yet reproduced by code**.
-
-| | No inheritance | Priority inheritance |
-|---|---|---|
-| High-priority task response | 7 | 4 |
-| High-priority deadline (abs 9) | missed by 1 | met |
-| High-priority inversion ticks | 3 | 0 |
-
-## Limitations (by design)
-
-- One CPU. No multicore.
-- Zero-cost context switches; no interrupts or timer jitter.
-- Preemption only at tick boundaries.
-- Straight-line task programs (no branches or loops).
-- One-shot tasks only in v0.1.
-
-## Roadmap
-
-- [x] 1. Task model, states, operations
-- [x] 2. Ready queue
-- [x] 3. Scheduler selection
-- [x] 4. Tick engine
-- [x] 5. Preemption
-- [x] 6. Mutex and locking
-- [x] 7. Blocking
-- [x] 8. Priority inversion
-- [x] 9. Priority inheritance
-- [ ] 10. Multiple waiters, nested locks, propagation
-- [ ] 11. Deadlock detection
-- [ ] 12. Metrics and event trace
-- [ ] 13. Invariant checker
-- [ ] 14. Golden S1 scenarios and CLI
-- [ ] 15. JSON scenario loader
-- [ ] 16. Visualizer

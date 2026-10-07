@@ -5,16 +5,12 @@
 #include <optional>
 #include <vector>
 
+#include "cadence/event.hpp"
 #include "cadence/ready_queue.hpp"
 #include "cadence/task.hpp"
 #include "cadence/types.hpp"
 
 namespace cadence {
-
-enum class Protocol {
-    NONE,
-    PIP
-};
 
 class Engine {
 public:
@@ -28,32 +24,34 @@ public:
     void step();
     void run(Tick ticks);
     bool run_until_done(Tick max_ticks);
-
-    // Run until the simulation reaches its horizon
-    // or all tasks complete.
     bool run_to_horizon();
 
-    Tick now() const {
-        return now_;
-    }
-
-    Tick horizon() const {
-        return horizon_;
-    }
-
-    bool finished() const {
-        return finished_;
-    }
-
+    Tick now() const { return now_; }
+    Tick horizon() const { return horizon_; }
+    bool finished() const { return finished_; }
     bool all_completed() const;
-
-    Protocol protocol() const {
-        return protocol_;
+    Protocol protocol() const { return protocol_; }
+    RunStatus status() const { return status_; }
+    bool deadlocked() const {
+        return status_ == RunStatus::Deadlock;
     }
 
     const std::vector<TaskId>& timeline() const {
         return timeline_;
     }
+
+    const std::vector<Event>& events() const {
+        return events_;
+    }
+
+    const std::vector<TickRow>& tick_rows() const {
+        return tick_rows_;
+    }
+
+    SimulationResult result() const;
+
+    // Throws std::logic_error on any violated invariant.
+    void check_invariants() const;
 
     const Task& task(TaskId id) const;
 
@@ -76,6 +74,9 @@ private:
     static constexpr Tick kDefaultHorizon =
         std::numeric_limits<Tick>::max();
 
+    static constexpr std::size_t kMaxResolveIterations =
+        4096;
+
     struct MutexSlot {
         MutexId id;
         TaskId owner;
@@ -89,9 +90,9 @@ private:
         Tick wake_at;
         MutexId blocked_on;
         std::vector<MutexId> held_mutexes;
-
         std::optional<Tick> completion_time;
         bool deadline_missed;
+        Tick executed_ticks;
     };
 
     std::size_t index_of(TaskId id) const;
@@ -129,6 +130,33 @@ private:
 
     void propagate_priority(TaskId id);
 
+    bool would_create_deadlock(
+        TaskId requester,
+        MutexId mutex_id
+    ) const;
+
+    std::vector<TaskId> deadlock_cycle(
+        TaskId requester,
+        MutexId mutex_id
+    ) const;
+
+    void mark_deadlock(
+        TaskId requester,
+        MutexId mutex_id
+    );
+
+    std::vector<std::size_t>
+    ordered_slot_indices_by_task_id() const;
+
+    void emit(
+        EventKind kind,
+        TaskId task,
+        std::optional<MutexId> mutex = std::nullopt,
+        std::int64_t a = 0,
+        std::int64_t b = 0,
+        std::vector<TaskId> cycle = {}
+    );
+
     void resolve();
 
     void activate_at_now();
@@ -137,8 +165,15 @@ private:
 
     void preempt_if_needed();
 
-    std::vector<std::size_t>
-    ordered_slot_indices_by_task_id() const;
+    void dispatch(std::size_t slot_index);
+
+    void complete_task(std::size_t slot_index);
+
+    void record_tick_row();
+
+    void execute_tick();
+
+    void finish_status_if_boundary();
 
     std::vector<Slot> slots_;
     std::vector<MutexSlot> mutexes_;
@@ -146,6 +181,7 @@ private:
     ReadyQueue ready_;
 
     std::size_t running_ = kNone;
+
     Tick now_ = 0;
     Tick horizon_ = kDefaultHorizon;
 
@@ -153,7 +189,15 @@ private:
 
     bool finished_ = false;
 
+    RunStatus status_ = RunStatus::Running;
+
+    std::uint64_t next_event_seq_ = 1;
+
     std::vector<TaskId> timeline_;
+
+    std::vector<Event> events_;
+
+    std::vector<TickRow> tick_rows_;
 };
 
 }  // namespace cadence

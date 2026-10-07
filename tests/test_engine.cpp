@@ -1,16 +1,10 @@
 #include <gtest/gtest.h>
 
-
-
 #include <stdexcept>
 
 #include <vector>
 
-
-
 #include "cadence/engine.hpp"
-
-
 
 using cadence::Engine;
 
@@ -24,17 +18,12 @@ using cadence::TaskId;
 
 using cadence::TaskState;
 
-
-
 using Timeline = std::vector<TaskId>;
 
-
-
-TEST(EngineTest, SingleTaskRunsToCompletion) {
+TEST(EngineTest, SingleTaskRunsToCompletion)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -46,9 +35,7 @@ TEST(EngineTest, SingleTaskRunsToCompletion) {
 
         {Operation::compute(3)}
 
-    ));
-
-
+        ));
 
     EXPECT_TRUE(e.run_until_done(10));
 
@@ -59,16 +46,12 @@ TEST(EngineTest, SingleTaskRunsToCompletion) {
     EXPECT_EQ(e.task(1).state(),
 
               TaskState::Completed);
-
 }
 
-
-
-TEST(EngineTest, HigherPriorityRunsFirst) {
+TEST(EngineTest, HigherPriorityRunsFirst)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -80,9 +63,7 @@ TEST(EngineTest, HigherPriorityRunsFirst) {
 
         {Operation::compute(2)}
 
-    ));
-
-
+        ));
 
     e.add_task(Task(
 
@@ -94,25 +75,19 @@ TEST(EngineTest, HigherPriorityRunsFirst) {
 
         {Operation::compute(2)}
 
-    ));
-
-
+        ));
 
     EXPECT_TRUE(e.run_until_done(10));
 
     EXPECT_EQ(e.timeline(),
 
               (Timeline{2, 2, 1, 1}));
-
 }
 
-
-
-TEST(EngineTest, EqualPriorityFollowsTaskIdAtSameRelease) {
+TEST(EngineTest, EqualPriorityFollowsTaskIdAtSameRelease)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -124,9 +99,7 @@ TEST(EngineTest, EqualPriorityFollowsTaskIdAtSameRelease) {
 
         {Operation::compute(2)}
 
-    ));
-
-
+        ));
 
     e.add_task(Task(
 
@@ -138,25 +111,19 @@ TEST(EngineTest, EqualPriorityFollowsTaskIdAtSameRelease) {
 
         {Operation::compute(2)}
 
-    ));
-
-
+        ));
 
     EXPECT_TRUE(e.run_until_done(10));
 
     EXPECT_EQ(e.timeline(),
 
               (Timeline{1, 1, 3, 3}));
-
 }
 
-
-
-TEST(EngineTest, SleepCreatesIdleGap) {
+TEST(EngineTest, SleepCreatesIdleGap)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -176,13 +143,9 @@ TEST(EngineTest, SleepCreatesIdleGap) {
 
         }
 
-    ));
-
-
+        ));
 
     EXPECT_TRUE(e.run_until_done(10));
-
-
 
     EXPECT_EQ(
 
@@ -192,19 +155,13 @@ TEST(EngineTest, SleepCreatesIdleGap) {
 
     );
 
-
-
     EXPECT_EQ(e.now(), 4);
-
 }
 
-
-
-TEST(EngineTest, HigherPriorityWakePreemptsAndResumes) {
+TEST(EngineTest, HigherPriorityWakePreemptsAndResumes)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -224,9 +181,7 @@ TEST(EngineTest, HigherPriorityWakePreemptsAndResumes) {
 
         }
 
-    ));
-
-
+        ));
 
     e.add_task(Task(
 
@@ -238,13 +193,9 @@ TEST(EngineTest, HigherPriorityWakePreemptsAndResumes) {
 
         {Operation::compute(4)}
 
-    ));
-
-
+        ));
 
     EXPECT_TRUE(e.run_until_done(20));
-
-
 
     EXPECT_EQ(
 
@@ -254,19 +205,13 @@ TEST(EngineTest, HigherPriorityWakePreemptsAndResumes) {
 
     );
 
-
-
     EXPECT_EQ(e.now(), 6);
-
 }
 
-
-
-TEST(EngineTest, EqualPriorityDoesNotPreempt) {
+TEST(EngineTest, EqualPriorityDoesNotPreempt)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -284,9 +229,7 @@ TEST(EngineTest, EqualPriorityDoesNotPreempt) {
 
         }
 
-    ));
-
-
+        ));
 
     e.add_task(Task(
 
@@ -298,13 +241,9 @@ TEST(EngineTest, EqualPriorityDoesNotPreempt) {
 
         {Operation::compute(3)}
 
-    ));
-
-
+        ));
 
     EXPECT_TRUE(e.run_until_done(20));
-
-
 
     EXPECT_EQ(
 
@@ -313,16 +252,12 @@ TEST(EngineTest, EqualPriorityDoesNotPreempt) {
         (Timeline{2, 2, 2, 1})
 
     );
-
 }
 
-
-
-TEST(EngineTest, PreemptedTaskGoesToFrontOfItsLevel) {
+TEST(EngineTest, PreemptedTaskGoesToFrontOfItsLevel)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -340,9 +275,7 @@ TEST(EngineTest, PreemptedTaskGoesToFrontOfItsLevel) {
 
         }
 
-    ));
-
-
+        ));
 
     e.add_task(Task(
 
@@ -354,9 +287,7 @@ TEST(EngineTest, PreemptedTaskGoesToFrontOfItsLevel) {
 
         {Operation::compute(3)}
 
-    ));
-
-
+        ));
 
     e.add_task(Task(
 
@@ -368,13 +299,9 @@ TEST(EngineTest, PreemptedTaskGoesToFrontOfItsLevel) {
 
         {Operation::compute(1)}
 
-    ));
-
-
+        ));
 
     EXPECT_TRUE(e.run_until_done(20));
-
-
 
     EXPECT_EQ(
 
@@ -383,16 +310,12 @@ TEST(EngineTest, PreemptedTaskGoesToFrontOfItsLevel) {
         (Timeline{2, 1, 2, 2, 3})
 
     );
-
 }
 
-
-
-TEST(EngineTest, DuplicateIdThrows) {
+TEST(EngineTest, DuplicateIdThrows)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -404,9 +327,7 @@ TEST(EngineTest, DuplicateIdThrows) {
 
         {Operation::compute(1)}
 
-    ));
-
-
+        ));
 
     EXPECT_THROW(
 
@@ -420,25 +341,19 @@ TEST(EngineTest, DuplicateIdThrows) {
 
             {Operation::compute(1)}
 
-        )),
+            )),
 
         std::invalid_argument
 
     );
-
 }
 
-
-
-TEST(EngineTest, EmptyEngineEndsImmediately) {
+TEST(EngineTest, EmptyEngineEndsImmediately)
+{
 
     Engine e(10);
 
-
-
     e.step();
-
-
 
     EXPECT_TRUE(e.finished());
 
@@ -447,16 +362,12 @@ TEST(EngineTest, EmptyEngineEndsImmediately) {
     EXPECT_TRUE(e.timeline().empty());
 
     EXPECT_EQ(e.now(), 0);
-
 }
 
-
-
-TEST(EngineTest, RunUntilDoneStopsAtLimit) {
+TEST(EngineTest, RunUntilDoneStopsAtLimit)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -468,9 +379,7 @@ TEST(EngineTest, RunUntilDoneStopsAtLimit) {
 
         {Operation::compute(5)}
 
-    ));
-
-
+        ));
 
     EXPECT_FALSE(
 
@@ -478,19 +387,13 @@ TEST(EngineTest, RunUntilDoneStopsAtLimit) {
 
     );
 
-
-
     EXPECT_EQ(e.now(), 3);
-
 }
 
-
-
-TEST(EngineTest, UnknownTaskThrows) {
+TEST(EngineTest, UnknownTaskThrows)
+{
 
     Engine e;
-
-
 
     EXPECT_THROW(
 
@@ -499,24 +402,16 @@ TEST(EngineTest, UnknownTaskThrows) {
         std::out_of_range
 
     );
-
 }
 
-
-
-TEST(EngineTest, EmptyProgramCompletesImmediately) {
+TEST(EngineTest, EmptyProgramCompletesImmediately)
+{
 
     Engine e(10);
 
-
-
     e.add_task(Task(1, "a", 1, {}));
 
-
-
     e.step();
-
-
 
     EXPECT_EQ(
 
@@ -525,8 +420,6 @@ TEST(EngineTest, EmptyProgramCompletesImmediately) {
         TaskState::Completed
 
     );
-
-
 
     EXPECT_TRUE(e.timeline().empty());
 
@@ -539,7 +432,6 @@ TEST(EngineTest, EmptyProgramCompletesImmediately) {
         0
 
     );
-
 }
 
 // -----------------------------
@@ -548,13 +440,10 @@ TEST(EngineTest, EmptyProgramCompletesImmediately) {
 
 // -----------------------------
 
-
-
-TEST(EngineTest, LockAcquireAndUnlockWorks) {
+TEST(EngineTest, LockAcquireAndUnlockWorks)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -576,13 +465,9 @@ TEST(EngineTest, LockAcquireAndUnlockWorks) {
 
         }
 
-    ));
-
-
+        ));
 
     EXPECT_TRUE(e.run_until_done(20));
-
-
 
     EXPECT_EQ(
 
@@ -592,8 +477,6 @@ TEST(EngineTest, LockAcquireAndUnlockWorks) {
 
     );
 
-
-
     EXPECT_EQ(
 
         e.mutex_owner(0),
@@ -602,15 +485,11 @@ TEST(EngineTest, LockAcquireAndUnlockWorks) {
 
     );
 
-
-
     EXPECT_TRUE(
 
         e.mutex_waiters(0).empty()
 
     );
-
-
 
     EXPECT_EQ(
 
@@ -619,16 +498,12 @@ TEST(EngineTest, LockAcquireAndUnlockWorks) {
         TaskState::Completed
 
     );
-
 }
 
-
-
-TEST(EngineTest, SecondTaskBlocksOnOwnedMutex) {
+TEST(EngineTest, SecondTaskBlocksOnOwnedMutex)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -650,9 +525,7 @@ TEST(EngineTest, SecondTaskBlocksOnOwnedMutex) {
 
         }
 
-    ));
-
-
+        ));
 
     e.add_task(Task(
 
@@ -674,13 +547,9 @@ TEST(EngineTest, SecondTaskBlocksOnOwnedMutex) {
 
         }
 
-    ));
-
-
+        ));
 
     e.step();
-
-
 
     EXPECT_EQ(
 
@@ -690,11 +559,7 @@ TEST(EngineTest, SecondTaskBlocksOnOwnedMutex) {
 
     );
 
-
-
     e.step();
-
-
 
     EXPECT_EQ(
 
@@ -704,8 +569,6 @@ TEST(EngineTest, SecondTaskBlocksOnOwnedMutex) {
 
     );
 
-
-
     EXPECT_EQ(
 
         e.mutex_waiters(0),
@@ -714,8 +577,6 @@ TEST(EngineTest, SecondTaskBlocksOnOwnedMutex) {
 
     );
 
-
-
     EXPECT_EQ(
 
         e.mutex_owner(0),
@@ -723,8 +584,6 @@ TEST(EngineTest, SecondTaskBlocksOnOwnedMutex) {
         1
 
     );
-
-
 
     EXPECT_EQ(
 
@@ -734,15 +593,11 @@ TEST(EngineTest, SecondTaskBlocksOnOwnedMutex) {
 
     );
 
-
-
     EXPECT_TRUE(
 
         e.run_until_done(20)
 
     );
-
-
 
     EXPECT_EQ(
 
@@ -752,8 +607,6 @@ TEST(EngineTest, SecondTaskBlocksOnOwnedMutex) {
 
     );
 
-
-
     EXPECT_EQ(
 
         e.task(1).state(),
@@ -761,8 +614,6 @@ TEST(EngineTest, SecondTaskBlocksOnOwnedMutex) {
         TaskState::Completed
 
     );
-
-
 
     EXPECT_EQ(
 
@@ -772,8 +623,6 @@ TEST(EngineTest, SecondTaskBlocksOnOwnedMutex) {
 
     );
 
-
-
     EXPECT_EQ(
 
         e.mutex_owner(0),
@@ -781,16 +630,12 @@ TEST(EngineTest, SecondTaskBlocksOnOwnedMutex) {
         kIdle
 
     );
-
 }
 
-
-
-TEST(EngineTest, UnlockDirectlyHandsMutexToWaiter) {
+TEST(EngineTest, UnlockDirectlyHandsMutexToWaiter)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -812,9 +657,7 @@ TEST(EngineTest, UnlockDirectlyHandsMutexToWaiter) {
 
         }
 
-    ));
-
-
+        ));
 
     e.add_task(Task(
 
@@ -836,15 +679,11 @@ TEST(EngineTest, UnlockDirectlyHandsMutexToWaiter) {
 
         }
 
-    ));
-
-
+        ));
 
     e.step();
 
     e.step();
-
-
 
     EXPECT_EQ(
 
@@ -854,11 +693,7 @@ TEST(EngineTest, UnlockDirectlyHandsMutexToWaiter) {
 
     );
 
-
-
     e.step();
-
-
 
     EXPECT_EQ(
 
@@ -868,8 +703,6 @@ TEST(EngineTest, UnlockDirectlyHandsMutexToWaiter) {
 
     );
 
-
-
     EXPECT_EQ(
 
         e.task(2).state(),
@@ -878,8 +711,6 @@ TEST(EngineTest, UnlockDirectlyHandsMutexToWaiter) {
 
     );
 
-
-
     EXPECT_EQ(
 
         e.task(2).program_size(),
@@ -887,16 +718,12 @@ TEST(EngineTest, UnlockDirectlyHandsMutexToWaiter) {
         4u
 
     );
-
 }
 
-
-
-TEST(EngineTest, HighestPriorityWaiterWinsAtUnlock) {
+TEST(EngineTest, HighestPriorityWaiterWinsAtUnlock)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -918,9 +745,7 @@ TEST(EngineTest, HighestPriorityWaiterWinsAtUnlock) {
 
         }
 
-    ));
-
-
+        ));
 
     e.add_task(Task(
 
@@ -942,9 +767,7 @@ TEST(EngineTest, HighestPriorityWaiterWinsAtUnlock) {
 
         }
 
-    ));
-
-
+        ));
 
     e.add_task(Task(
 
@@ -966,13 +789,9 @@ TEST(EngineTest, HighestPriorityWaiterWinsAtUnlock) {
 
         }
 
-    ));
-
-
+        ));
 
     EXPECT_TRUE(e.run_until_done(30));
-
-
 
     EXPECT_EQ(
 
@@ -982,8 +801,6 @@ TEST(EngineTest, HighestPriorityWaiterWinsAtUnlock) {
 
     );
 
-
-
     EXPECT_EQ(
 
         e.timeline(),
@@ -991,16 +808,12 @@ TEST(EngineTest, HighestPriorityWaiterWinsAtUnlock) {
         (Timeline{1, 1, 1, 3, 2, 1})
 
     );
-
 }
 
-
-
-TEST(EngineTest, EqualPrioritySameReleaseUsesTaskIdOrdering) {
+TEST(EngineTest, EqualPrioritySameReleaseUsesTaskIdOrdering)
+{
 
     Engine e(10);
-
-
 
     e.add_task(
 
@@ -1014,11 +827,9 @@ TEST(EngineTest, EqualPrioritySameReleaseUsesTaskIdOrdering) {
 
             {Operation::compute(2)}
 
-        )
+            )
 
     );
-
-
 
     e.add_task(
 
@@ -1032,15 +843,11 @@ TEST(EngineTest, EqualPrioritySameReleaseUsesTaskIdOrdering) {
 
             {Operation::compute(2)}
 
-        )
+            )
 
     );
 
-
-
     EXPECT_TRUE(e.run_until_done(10));
-
-
 
     EXPECT_EQ(
 
@@ -1049,16 +856,12 @@ TEST(EngineTest, EqualPrioritySameReleaseUsesTaskIdOrdering) {
         (Timeline{1, 1, 3, 3})
 
     );
-
 }
 
-
-
-TEST(EngineTest, RecursiveLockThrows) {
+TEST(EngineTest, RecursiveLockThrows)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -1076,27 +879,21 @@ TEST(EngineTest, RecursiveLockThrows) {
 
         }
 
-    ));
-
-
+        ));
 
     EXPECT_THROW(
-
         e.step(),
+        std::logic_error);
 
-        std::logic_error
-
-    );
-
+    EXPECT_THROW(
+        e.step(),
+        std::logic_error);
 }
 
-
-
-TEST(EngineTest, UnlockByNonOwnerThrows) {
+TEST(EngineTest, UnlockByNonOwnerThrows)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -1112,9 +909,7 @@ TEST(EngineTest, UnlockByNonOwnerThrows) {
 
         }
 
-    ));
-
-
+        ));
 
     EXPECT_THROW(
 
@@ -1123,16 +918,12 @@ TEST(EngineTest, UnlockByNonOwnerThrows) {
         std::logic_error
 
     );
-
 }
 
-
-
-TEST(EngineTest, CompletingWhileHoldingMutexThrows) {
+TEST(EngineTest, CompletingWhileHoldingMutexThrows)
+{
 
     Engine e;
-
-
 
     e.add_task(Task(
 
@@ -1150,21 +941,14 @@ TEST(EngineTest, CompletingWhileHoldingMutexThrows) {
 
         }
 
-    ));
+        ));
 
-
+    EXPECT_NO_THROW(e.step());
 
     EXPECT_THROW(
-
         e.step(),
-
-        std::logic_error
-
-    );
-
+        std::logic_error);
 }
-
-
 
 // -----------------------------
 
@@ -1172,13 +956,10 @@ TEST(EngineTest, CompletingWhileHoldingMutexThrows) {
 
 // -----------------------------
 
-
-
-TEST(PriorityInheritanceTest, NoneKeepsBasePriority) {
+TEST(PriorityInheritanceTest, NoneKeepsBasePriority)
+{
 
     Engine e(cadence::Protocol::NONE);
-
-
 
     e.add_task(Task(
 
@@ -1200,9 +981,7 @@ TEST(PriorityInheritanceTest, NoneKeepsBasePriority) {
 
         }
 
-    ));
-
-
+        ));
 
     e.add_task(Task(
 
@@ -1220,9 +999,7 @@ TEST(PriorityInheritanceTest, NoneKeepsBasePriority) {
 
         }
 
-    ));
-
-
+        ));
 
     e.add_task(Task(
 
@@ -1244,17 +1021,13 @@ TEST(PriorityInheritanceTest, NoneKeepsBasePriority) {
 
         }
 
-    ));
-
-
+        ));
 
     e.step();
 
     e.step();
 
     e.step();
-
-
 
     EXPECT_EQ(
 
@@ -1264,8 +1037,6 @@ TEST(PriorityInheritanceTest, NoneKeepsBasePriority) {
 
     );
 
-
-
     EXPECT_EQ(
 
         e.task(3).state(),
@@ -1273,8 +1044,6 @@ TEST(PriorityInheritanceTest, NoneKeepsBasePriority) {
         TaskState::Blocked
 
     );
-
-
 
     EXPECT_EQ(
 
@@ -1284,15 +1053,11 @@ TEST(PriorityInheritanceTest, NoneKeepsBasePriority) {
 
     );
 
-
-
     EXPECT_TRUE(
 
         e.run_until_done(20)
 
     );
-
-
 
     EXPECT_EQ(
 
@@ -1301,16 +1066,12 @@ TEST(PriorityInheritanceTest, NoneKeepsBasePriority) {
         (Timeline{1, 2, 2, 1, 1, 3, 1})
 
     );
-
 }
 
-
-
-TEST(PriorityInheritanceTest, PIPBoostsOwner) {
+TEST(PriorityInheritanceTest, PIPBoostsOwner)
+{
 
     Engine e(cadence::Protocol::PIP);
-
-
 
     e.add_task(Task(
 
@@ -1332,9 +1093,7 @@ TEST(PriorityInheritanceTest, PIPBoostsOwner) {
 
         }
 
-    ));
-
-
+        ));
 
     e.add_task(Task(
 
@@ -1352,9 +1111,7 @@ TEST(PriorityInheritanceTest, PIPBoostsOwner) {
 
         }
 
-    ));
-
-
+        ));
 
     e.add_task(Task(
 
@@ -1376,17 +1133,13 @@ TEST(PriorityInheritanceTest, PIPBoostsOwner) {
 
         }
 
-    ));
+        ));
 
+    e.step(); // tick 0: L runs
 
+    e.step(); // tick 1: M runs
 
-    e.step();  // tick 0: L runs
-
-    e.step();  // tick 1: M runs
-
-    e.step();  // tick 2: H blocks, L inherits 3
-
-
+    e.step(); // tick 2: H blocks, L inherits 3
 
     EXPECT_EQ(
 
@@ -1396,8 +1149,6 @@ TEST(PriorityInheritanceTest, PIPBoostsOwner) {
 
     );
 
-
-
     EXPECT_EQ(
 
         e.task(3).state(),
@@ -1406,8 +1157,6 @@ TEST(PriorityInheritanceTest, PIPBoostsOwner) {
 
     );
 
-
-
     EXPECT_EQ(
 
         e.mutex_owner(0),
@@ -1415,8 +1164,6 @@ TEST(PriorityInheritanceTest, PIPBoostsOwner) {
         1
 
     );
-
-
 
     EXPECT_EQ(
 
@@ -1426,15 +1173,11 @@ TEST(PriorityInheritanceTest, PIPBoostsOwner) {
 
     );
 
-
-
     // tick 3: L finishes its final COMPUTE.
 
     // UNLOCK executes at the next boundary.
 
     e.step();
-
-
 
     EXPECT_EQ(
 
@@ -1444,8 +1187,6 @@ TEST(PriorityInheritanceTest, PIPBoostsOwner) {
 
     );
 
-
-
     EXPECT_EQ(
 
         e.mutex_owner(0),
@@ -1453,8 +1194,6 @@ TEST(PriorityInheritanceTest, PIPBoostsOwner) {
         1
 
     );
-
-
 
     // tick 4 boundary: L executes UNLOCK,
 
@@ -1462,8 +1201,6 @@ TEST(PriorityInheritanceTest, PIPBoostsOwner) {
 
     e.step();
 
-
-
     EXPECT_EQ(
 
         e.task(1).effective_priority(),
@@ -1471,8 +1208,6 @@ TEST(PriorityInheritanceTest, PIPBoostsOwner) {
         1
 
     );
-
-
 
     EXPECT_EQ(
 
@@ -1482,15 +1217,11 @@ TEST(PriorityInheritanceTest, PIPBoostsOwner) {
 
     );
 
-
-
     EXPECT_TRUE(
 
         e.run_until_done(20)
 
     );
-
-
 
     EXPECT_EQ(
 
@@ -1499,16 +1230,14 @@ TEST(PriorityInheritanceTest, PIPBoostsOwner) {
         (Timeline{1, 2, 1, 1, 3, 2, 1})
 
     );
-
 }
 
 TEST(PriorityInheritanceTest,
 
-     ChainedInheritancePropagates) {
+     ChainedInheritancePropagates)
+{
 
     Engine e(cadence::Protocol::PIP);
-
-
 
     // L owns R2.
 
@@ -1530,9 +1259,7 @@ TEST(PriorityInheritanceTest,
 
         }
 
-    ));
-
-
+        ));
 
     // M owns R1, then blocks on R2.
 
@@ -1560,9 +1287,7 @@ TEST(PriorityInheritanceTest,
 
         }
 
-    ));
-
-
+        ));
 
     // H blocks on R1, which M owns.
 
@@ -1586,17 +1311,13 @@ TEST(PriorityInheritanceTest,
 
         }
 
-    ));
+        ));
 
+    e.step(); // L runs
 
+    e.step(); // M blocks on L's R2
 
-    e.step();  // L runs
-
-    e.step();  // M blocks on L's R2
-
-    e.step();  // H blocks on M's R1
-
-
+    e.step(); // H blocks on M's R1
 
     EXPECT_EQ(
 
@@ -1606,8 +1327,6 @@ TEST(PriorityInheritanceTest,
 
     );
 
-
-
     EXPECT_EQ(
 
         e.task(1).effective_priority(),
@@ -1615,8 +1334,6 @@ TEST(PriorityInheritanceTest,
         3
 
     );
-
-
 
     EXPECT_EQ(
 
@@ -1626,8 +1343,6 @@ TEST(PriorityInheritanceTest,
 
     );
 
-
-
     EXPECT_EQ(
 
         e.mutex_owner(2),
@@ -1636,11 +1351,7 @@ TEST(PriorityInheritanceTest,
 
     );
 
-
-
-    e.step();  // L hands R2 to M
-
-
+    e.step(); // L hands R2 to M
 
     EXPECT_EQ(
 
@@ -1650,8 +1361,6 @@ TEST(PriorityInheritanceTest,
 
     );
 
-
-
     EXPECT_EQ(
 
         e.task(2).effective_priority(),
@@ -1659,8 +1368,6 @@ TEST(PriorityInheritanceTest,
         3
 
     );
-
-
 
     EXPECT_EQ(
 
@@ -1670,19 +1377,15 @@ TEST(PriorityInheritanceTest,
 
     );
 
-
-
     EXPECT_TRUE(
 
         e.run_until_done(30)
 
     );
-
 }
 
-
-
-TEST(EngineTest, TaskIsReleasedAtItsReleaseTime) {
+TEST(EngineTest, TaskIsReleasedAtItsReleaseTime)
+{
 
     Engine e(10);
 
@@ -1692,25 +1395,21 @@ TEST(EngineTest, TaskIsReleasedAtItsReleaseTime) {
             "late",
             5,
             {Operation::compute(2)},
-            3
-        )
-    );
+            3));
 
-    e.step();  // t=0
-    e.step();  // t=1
-    e.step();  // t=2
+    e.step(); // t=0
+    e.step(); // t=1
+    e.step(); // t=2
 
     EXPECT_EQ(
         e.timeline(),
-        (Timeline{kIdle, kIdle, kIdle})
-    );
+        (Timeline{kIdle, kIdle, kIdle}));
 
     EXPECT_EQ(
         e.task(1).state(),
-        TaskState::New
-    );
+        TaskState::New);
 
-    e.step();  // t=3: release + first compute tick
+    e.step(); // t=3: release + first compute tick
 
     EXPECT_EQ(
         e.timeline(),
@@ -1718,16 +1417,13 @@ TEST(EngineTest, TaskIsReleasedAtItsReleaseTime) {
             kIdle,
             kIdle,
             kIdle,
-            1
-        })
-    );
+            1}));
 
     EXPECT_EQ(
         e.task(1).state(),
-        TaskState::Running
-    );
+        TaskState::Running);
 
-    e.step();  // t=4: second/final compute tick
+    e.step(); // t=4: second/final compute tick
 
     EXPECT_EQ(
         e.timeline(),
@@ -1736,23 +1432,21 @@ TEST(EngineTest, TaskIsReleasedAtItsReleaseTime) {
             kIdle,
             kIdle,
             1,
-            1
-        })
-    );
+            1}));
+
+    e.step(); // t=5 boundary: implicit END -> COMPLETED
 
     EXPECT_EQ(
         e.task(1).state(),
-        TaskState::Completed
-    );
+        TaskState::Completed);
 
     EXPECT_EQ(e.now(), 5);
 }
 
-TEST(EngineTest, ReleaseOrderingUsesTaskId) {
+TEST(EngineTest, ReleaseOrderingUsesTaskId)
+{
 
     Engine e(10);
-
-
 
     e.add_task(
 
@@ -1768,11 +1462,9 @@ TEST(EngineTest, ReleaseOrderingUsesTaskId) {
 
             2
 
-        )
+            )
 
     );
-
-
 
     e.add_task(
 
@@ -1788,33 +1480,25 @@ TEST(EngineTest, ReleaseOrderingUsesTaskId) {
 
             2
 
-        )
+            )
 
     );
 
-
-
     EXPECT_TRUE(e.run_to_horizon());
-
-
 
     EXPECT_EQ(
 
         e.timeline(),
 
-        (Timeline{ kIdle, kIdle, 10, 20 })
+        (Timeline{kIdle, kIdle, 10, 20})
 
     );
-
 }
 
-
-
-TEST(EngineTest, DeadlineMissIsRecorded) {
+TEST(EngineTest, DeadlineMissIsRecorded)
+{
 
     Engine e(10);
-
-
 
     e.add_task(
 
@@ -1832,11 +1516,9 @@ TEST(EngineTest, DeadlineMissIsRecorded) {
 
             2
 
-        )
+            )
 
     );
-
-
 
     EXPECT_TRUE(
 
@@ -1844,23 +1526,17 @@ TEST(EngineTest, DeadlineMissIsRecorded) {
 
     );
 
-
-
     EXPECT_TRUE(
 
         e.deadline_missed(1)
 
     );
 
-
-
     ASSERT_TRUE(
 
         e.completion_time(1).has_value()
 
     );
-
-
 
     EXPECT_EQ(
 
@@ -1869,16 +1545,12 @@ TEST(EngineTest, DeadlineMissIsRecorded) {
         4
 
     );
-
 }
 
-
-
-TEST(EngineTest, CompletionExactlyAtDeadlineDoesNotMiss) {
+TEST(EngineTest, CompletionExactlyAtDeadlineDoesNotMiss)
+{
 
     Engine e(10);
-
-
 
     e.add_task(
 
@@ -1896,11 +1568,9 @@ TEST(EngineTest, CompletionExactlyAtDeadlineDoesNotMiss) {
 
             2
 
-        )
+            )
 
     );
-
-
 
     EXPECT_TRUE(
 
@@ -1908,23 +1578,17 @@ TEST(EngineTest, CompletionExactlyAtDeadlineDoesNotMiss) {
 
     );
 
-
-
     EXPECT_FALSE(
 
         e.deadline_missed(1)
 
     );
 
-
-
     ASSERT_TRUE(
 
         e.completion_time(1).has_value()
 
     );
-
-
 
     EXPECT_EQ(
 
@@ -1933,16 +1597,12 @@ TEST(EngineTest, CompletionExactlyAtDeadlineDoesNotMiss) {
         3
 
     );
-
 }
 
-
-
-TEST(EngineTest, HorizonStopsBeforeNextTick) {
+TEST(EngineTest, HorizonStopsBeforeNextTick)
+{
 
     Engine e(3);
-
-
 
     e.add_task(
 
@@ -1956,19 +1616,15 @@ TEST(EngineTest, HorizonStopsBeforeNextTick) {
 
             {Operation::compute(10)}
 
-        )
+            )
 
     );
-
-
 
     EXPECT_FALSE(
 
         e.run_to_horizon()
 
     );
-
-
 
     EXPECT_EQ(
 
@@ -1978,8 +1634,6 @@ TEST(EngineTest, HorizonStopsBeforeNextTick) {
 
     );
 
-
-
     EXPECT_EQ(
 
         e.timeline(),
@@ -1988,8 +1642,6 @@ TEST(EngineTest, HorizonStopsBeforeNextTick) {
 
     );
 
-
-
     EXPECT_EQ(
 
         e.task(1).state(),
@@ -1997,16 +1649,12 @@ TEST(EngineTest, HorizonStopsBeforeNextTick) {
         TaskState::Running
 
     );
-
 }
 
-
-
-TEST(EngineTest, DeadlineAtHorizonIsChecked) {
+TEST(EngineTest, DeadlineAtHorizonIsChecked)
+{
 
     Engine e(3);
-
-
 
     e.add_task(
 
@@ -2024,11 +1672,9 @@ TEST(EngineTest, DeadlineAtHorizonIsChecked) {
 
             3
 
-        )
+            )
 
     );
-
-
 
     EXPECT_FALSE(
 
@@ -2036,23 +1682,17 @@ TEST(EngineTest, DeadlineAtHorizonIsChecked) {
 
     );
 
-
-
     EXPECT_TRUE(
 
         e.finished()
 
     );
 
-
-
     EXPECT_TRUE(
 
         e.deadline_missed(1)
 
     );
-
-
 
     EXPECT_EQ(
 
@@ -2062,8 +1702,6 @@ TEST(EngineTest, DeadlineAtHorizonIsChecked) {
 
     );
 
-
-
     EXPECT_EQ(
 
         e.timeline(),
@@ -2071,5 +1709,233 @@ TEST(EngineTest, DeadlineAtHorizonIsChecked) {
         (Timeline{1, 1, 1})
 
     );
+}
 
-} 
+// -----------------------------
+// Step 9: Deadlock Detection
+// -----------------------------
+
+TEST(DeadlockTest, TwoTaskDeadlockDetected)
+{
+
+    Engine e(20, cadence::Protocol::NONE);
+
+    // Task 1 owns R0, then sleeps while holding it.
+    // It later requests R1.
+    e.add_task(Task(
+        1,
+        "A",
+        1,
+        {Operation::lock(0),
+         Operation::sleep(1),
+         Operation::lock(1)},
+        0));
+
+    // Task 2 arrives at t=1, owns R1, then requests R0.
+    e.add_task(Task(
+        2,
+        "B",
+        2,
+        {Operation::lock(1),
+         Operation::lock(0)},
+        1));
+
+    EXPECT_FALSE(e.run_to_horizon());
+
+    EXPECT_TRUE(e.finished());
+
+    EXPECT_EQ(
+        e.status(),
+        cadence::RunStatus::Deadlock);
+
+    EXPECT_TRUE(e.deadlocked());
+
+    EXPECT_EQ(
+        e.task(1).state(),
+        TaskState::Blocked);
+
+    EXPECT_EQ(
+        e.task(2).state(),
+        TaskState::Blocked);
+
+    EXPECT_EQ(
+        e.mutex_owner(0),
+        1);
+
+    EXPECT_EQ(
+        e.mutex_owner(1),
+        2);
+
+    EXPECT_EQ(
+        e.now(),
+        1);
+
+    EXPECT_EQ(
+        e.timeline(),
+        (Timeline{kIdle}));
+}
+
+TEST(DeadlockTest, TwoTaskDeadlockDetectedUnderPIP)
+{
+
+    Engine e(20, cadence::Protocol::PIP);
+
+    e.add_task(Task(
+        1,
+        "A",
+        1,
+        {Operation::lock(0),
+         Operation::sleep(1),
+         Operation::lock(1)},
+        0));
+
+    e.add_task(Task(
+        2,
+        "B",
+        2,
+        {Operation::lock(1),
+         Operation::lock(0)},
+        1));
+
+    EXPECT_FALSE(e.run_to_horizon());
+
+    EXPECT_TRUE(e.finished());
+
+    EXPECT_EQ(
+        e.status(),
+        cadence::RunStatus::Deadlock);
+
+    EXPECT_TRUE(e.deadlocked());
+
+    EXPECT_EQ(
+        e.task(1).state(),
+        TaskState::Blocked);
+
+    EXPECT_EQ(
+        e.task(2).state(),
+        TaskState::Blocked);
+
+    EXPECT_EQ(
+        e.mutex_owner(0),
+        1);
+
+    EXPECT_EQ(
+        e.mutex_owner(1),
+        2);
+}
+
+TEST(DeadlockTest, ThreeTaskCycleDetected)
+{
+
+    Engine e(30, cadence::Protocol::PIP);
+
+    // A owns R0 and wakes at t=3.
+    e.add_task(Task(
+        1,
+        "A",
+        1,
+        {Operation::lock(0),
+         Operation::sleep(3),
+         Operation::lock(2)},
+        0));
+
+    // B owns R1 and blocks on R0.
+    e.add_task(Task(
+        2,
+        "B",
+        2,
+        {Operation::lock(1),
+         Operation::lock(0)},
+        1));
+
+    // C owns R2 and blocks on R1.
+    e.add_task(Task(
+        3,
+        "C",
+        3,
+        {Operation::lock(2),
+         Operation::lock(1)},
+        2));
+
+    EXPECT_FALSE(e.run_to_horizon());
+
+    EXPECT_TRUE(e.finished());
+
+    EXPECT_EQ(
+        e.status(),
+        cadence::RunStatus::Deadlock);
+
+    EXPECT_TRUE(e.deadlocked());
+
+    EXPECT_EQ(
+        e.task(1).state(),
+        TaskState::Blocked);
+
+    EXPECT_EQ(
+        e.task(2).state(),
+        TaskState::Blocked);
+
+    EXPECT_EQ(
+        e.task(3).state(),
+        TaskState::Blocked);
+
+    EXPECT_EQ(
+        e.mutex_owner(0),
+        1);
+
+    EXPECT_EQ(
+        e.mutex_owner(1),
+        2);
+
+    EXPECT_EQ(
+        e.mutex_owner(2),
+        3);
+}
+
+TEST(DeadlockTest, BlockingChainWithoutCycleIsNotDeadlock)
+{
+
+    Engine e(20, cadence::Protocol::PIP);
+
+    // A owns R0 and releases it after waking.
+    e.add_task(Task(
+        1,
+        "A",
+        1,
+        {Operation::lock(0),
+         Operation::sleep(1),
+         Operation::unlock(0)},
+        0));
+
+    // B arrives while A owns R0.
+    e.add_task(Task(
+        2,
+        "B",
+        2,
+        {Operation::lock(0),
+         Operation::compute(1),
+         Operation::unlock(0)},
+        1));
+
+    EXPECT_TRUE(e.run_to_horizon());
+
+    EXPECT_TRUE(e.finished());
+
+    EXPECT_EQ(
+        e.status(),
+        cadence::RunStatus::Completed);
+
+    EXPECT_FALSE(e.deadlocked());
+
+    EXPECT_EQ(
+        e.task(1).state(),
+        TaskState::Completed);
+
+    EXPECT_EQ(
+        e.task(2).state(),
+        TaskState::Completed);
+
+    EXPECT_EQ(
+        e.mutex_owner(0),
+        kIdle);
+}

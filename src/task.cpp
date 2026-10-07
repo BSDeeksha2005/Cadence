@@ -21,8 +21,7 @@ Task::Task(
       release_(release),
       relative_deadline_(relative_deadline),
       program_(std::move(program)),
-      state_(TaskState::New)
-{
+      state_(TaskState::New) {
     if (release < 0) {
         throw std::invalid_argument(
             "task release time cannot be negative"
@@ -37,8 +36,7 @@ Task::Task(
         }
 
         if (relative_deadline.value() >
-            std::numeric_limits<Tick>::max() - release)
-        {
+            std::numeric_limits<Tick>::max() - release) {
             throw std::invalid_argument(
                 "absolute deadline overflows Tick"
             );
