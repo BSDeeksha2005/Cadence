@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -12,11 +13,22 @@ namespace cadence {
 
 class Task {
 public:
-    Task(TaskId id, std::string name, Priority base_priority,
-         std::vector<Operation> program);
+    Task(
+        TaskId id,
+        std::string name,
+        Priority base_priority,
+        std::vector<Operation> program,
+        Tick release = 0,
+        std::optional<Tick> relative_deadline = std::nullopt
+    );
 
-    TaskId id() const { return id_; }
-    const std::string& name() const { return name_; }
+    TaskId id() const {
+        return id_;
+    }
+
+    const std::string& name() const {
+        return name_;
+    }
 
     Priority base_priority() const {
         return base_priority_;
@@ -28,6 +40,22 @@ public:
 
     void set_effective_priority(Priority priority) {
         effective_priority_ = priority;
+    }
+
+    Tick release() const {
+        return release_;
+    }
+
+    const std::optional<Tick>& relative_deadline() const {
+        return relative_deadline_;
+    }
+
+    std::optional<Tick> absolute_deadline() const {
+        if (!relative_deadline_.has_value()) {
+            return std::nullopt;
+        }
+
+        return release_ + relative_deadline_.value();
     }
 
     const std::vector<Operation>& program() const {
@@ -53,6 +81,10 @@ private:
     std::string name_;
     Priority base_priority_;
     Priority effective_priority_;
+
+    Tick release_;
+    std::optional<Tick> relative_deadline_;
+
     std::vector<Operation> program_;
     TaskState state_;
 };

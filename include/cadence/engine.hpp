@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstddef>
+#include <limits>
+#include <optional>
 #include <vector>
 
 #include "cadence/ready_queue.hpp"
@@ -16,8 +18,10 @@ enum class Protocol {
 
 class Engine {
 public:
-    explicit Engine(Protocol protocol = Protocol::NONE)
-        : protocol_(protocol) {}
+    explicit Engine(Tick horizon,
+                    Protocol protocol = Protocol::NONE);
+
+    explicit Engine(Protocol protocol = Protocol::NONE);
 
     void add_task(Task task);
 
@@ -25,8 +29,20 @@ public:
     void run(Tick ticks);
     bool run_until_done(Tick max_ticks);
 
+    // Run until the simulation reaches its horizon
+    // or all tasks complete.
+    bool run_to_horizon();
+
     Tick now() const {
         return now_;
+    }
+
+    Tick horizon() const {
+        return horizon_;
+    }
+
+    bool finished() const {
+        return finished_;
     }
 
     bool all_completed() const;
@@ -47,11 +63,18 @@ public:
         MutexId id
     ) const;
 
+    bool deadline_missed(TaskId id) const;
+
+    std::optional<Tick> completion_time(TaskId id) const;
+
 private:
     static constexpr std::size_t kNone =
         static_cast<std::size_t>(-1);
 
     static constexpr MutexId kNoMutex = -1;
+
+    static constexpr Tick kDefaultHorizon =
+        std::numeric_limits<Tick>::max();
 
     struct MutexSlot {
         MutexId id;
@@ -66,6 +89,9 @@ private:
         Tick wake_at;
         MutexId blocked_on;
         std::vector<MutexId> held_mutexes;
+
+        std::optional<Tick> completion_time;
+        bool deadline_missed;
     };
 
     std::size_t index_of(TaskId id) const;
@@ -105,9 +131,14 @@ private:
 
     void resolve();
 
-    void wake_sleepers();
+    void activate_at_now();
+
+    void check_deadlines();
 
     void preempt_if_needed();
+
+    std::vector<std::size_t>
+    ordered_slot_indices_by_task_id() const;
 
     std::vector<Slot> slots_;
     std::vector<MutexSlot> mutexes_;
@@ -116,8 +147,11 @@ private:
 
     std::size_t running_ = kNone;
     Tick now_ = 0;
+    Tick horizon_ = kDefaultHorizon;
 
     Protocol protocol_ = Protocol::NONE;
+
+    bool finished_ = false;
 
     std::vector<TaskId> timeline_;
 };

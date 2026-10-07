@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "cadence/task.hpp"
+#include <stdexcept>
 
 using cadence::Operation;
 using cadence::Task;
@@ -38,4 +39,49 @@ TEST(TaskTest, ToStringIncludesProgram) {
     Task t(1, "a", 4, {Operation::compute(2), Operation::sleep(1)});
     EXPECT_EQ(t.to_string(),
               "Task 1 'a' prio=4 state=NEW program=[COMPUTE(2), SLEEP(1)]");
+}
+
+TEST(TaskTest, StoresReleaseAndDeadline) {
+    Task task(
+        7,
+        "job",
+        5,
+        {Operation::compute(2)},
+        4,
+        6
+    );
+
+    EXPECT_EQ(task.release(), 4);
+    ASSERT_TRUE(task.relative_deadline().has_value());
+    EXPECT_EQ(task.relative_deadline().value(), 6);
+
+    ASSERT_TRUE(task.absolute_deadline().has_value());
+    EXPECT_EQ(task.absolute_deadline().value(), 10);
+}
+
+TEST(TaskTest, ReleaseCannotBeNegative) {
+    EXPECT_THROW(
+        Task(
+            1,
+            "bad",
+            1,
+            {Operation::compute(1)},
+            -1
+        ),
+        std::invalid_argument
+    );
+}
+
+TEST(TaskTest, DeadlineMustBePositive) {
+    EXPECT_THROW(
+        Task(
+            1,
+            "bad",
+            1,
+            {Operation::compute(1)},
+            0,
+            0
+        ),
+        std::invalid_argument
+    );
 }

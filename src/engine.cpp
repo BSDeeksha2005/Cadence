@@ -2,11 +2,32 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <numeric>
 #include <stdexcept>
 #include <utility>
 #include <vector>
 
 namespace cadence {
+
+Engine::Engine(
+    Tick horizon,
+    Protocol protocol
+)
+    : horizon_(horizon),
+      protocol_(protocol)
+{
+    if (horizon < 0) {
+        throw std::invalid_argument(
+            "horizon cannot be negative"
+        );
+    }
+}
+
+Engine::Engine(Protocol protocol)
+    : horizon_(kDefaultHorizon),
+      protocol_(protocol)
+{
+}
 
 std::size_t Engine::index_of(TaskId id) const {
     for (std::size_t i = 0; i < slots_.size(); ++i) {
@@ -78,10 +99,26 @@ std::vector<TaskId> Engine::mutex_waiters(
     return mutex->waiters;
 }
 
+bool Engine::deadline_missed(TaskId id) const {
+    return slots_[index_of(id)].deadline_missed;
+}
+
+std::optional<Tick> Engine::completion_time(
+    TaskId id
+) const {
+    return slots_[index_of(id)].completion_time;
+}
+
 void Engine::add_task(Task task) {
-    if (now_ != 0) {
+    if (now_ != 0 || !timeline_.empty()) {
         throw std::logic_error(
             "tasks must be added before the first tick"
+        );
+    }
+
+    if (finished_) {
+        throw std::logic_error(
+            "cannot add task after simulation has finished"
         );
     }
 
@@ -93,8 +130,6 @@ void Engine::add_task(Task task) {
         }
     }
 
-    const TaskId id = task.id();
-
     slots_.push_back(
         Slot{
             std::move(task),
@@ -102,24 +137,22 @@ void Engine::add_task(Task task) {
             0,
             0,
             kNoMutex,
-            {}
+            {},
+            std::nullopt,
+            false
         }
     );
 
+    // Every task starts NEW.
+    // B2 performs the actual release.
     slots_.back().task.set_state(
-        TaskState::Ready
-    );
-
-    ready_.push(
-        id,
-        slots_.back().task.effective_priority()
+        TaskState::New
     );
 }
 
 bool Engine::all_completed() const {
     for (const Slot& slot : slots_) {
-        if (slot.task.state() !=
-            TaskState::Completed) {
+        if (slot.task.state() != TaskState::Completed) {
             return false;
         }
     }
@@ -170,10 +203,35 @@ void Engine::remove_held_mutex(
     slot.held_mutexes.erase(it);
 }
 
+std::vector<std::size_t>
+Engine::ordered_slot_indices_by_task_id() const {
+    std::vector<std::size_t> order(
+        slots_.size()
+    );
+
+    std::iota(
+        order.begin(),
+        order.end(),
+        static_cast<std::size_t>(0)
+    );
+
+    std::sort(
+        order.begin(),
+        order.end(),
+        [this](std::size_t lhs, std::size_t rhs) {
+            return slots_[lhs].task.id() <
+                   slots_[rhs].task.id();
+        }
+    );
+
+    return order;
+}
+
 Priority Engine::calculate_effective_priority(
     TaskId id
 ) const {
-    const Slot& slot = slots_[index_of(id)];
+    const Slot& slot =
+        slots_[index_of(id)];
 
     Priority effective =
         slot.task.base_priority();
@@ -246,8 +304,8 @@ void Engine::propagate_priority(TaskId id) {
                 seen.begin(),
                 seen.end(),
                 current
-            ) != seen.end()) {
-
+            ) != seen.end())
+        {
             throw std::logic_error(
                 "priority inheritance cycle"
             );
@@ -275,8 +333,8 @@ void Engine::propagate_priority(TaskId id) {
         );
 
         if (slot.task.state() ==
-            TaskState::Ready) {
-
+            TaskState::Ready)
+        {
             if (!ready_.remove(current)) {
                 throw std::logic_error(
                     "READY task missing from ReadyQueue"
@@ -291,8 +349,8 @@ void Engine::propagate_priority(TaskId id) {
 
         if (slot.task.state() ==
                 TaskState::Blocked &&
-            slot.blocked_on != kNoMutex) {
-
+            slot.blocked_on != kNoMutex)
+        {
             const MutexSlot* blocked_mutex =
                 find_mutex(slot.blocked_on);
 
@@ -323,8 +381,8 @@ std::size_t Engine::choose_waiter_index(
 
     for (std::size_t i = 1;
          i < mutex.waiters.size();
-         ++i) {
-
+         ++i)
+    {
         const Priority candidate =
             task(mutex.waiters[i])
                 .effective_priority();
@@ -337,19 +395,39 @@ std::size_t Engine::choose_waiter_index(
             best = i;
         }
 
-        // Equal priority deliberately does nothing:
-        // earlier waiter wins.
+        // Equal priority keeps earliest arrival.
     }
 
     return best;
 }
 
-void Engine::wake_sleepers() {
-    for (Slot& slot : slots_) {
+void Engine::activate_at_now() {
+    const std::vector<std::size_t> order =
+        ordered_slot_indices_by_task_id();
+
+    for (std::size_t index : order) {
+        Slot& slot = slots_[index];
+
+        if (slot.task.state() ==
+                TaskState::New &&
+            slot.task.release() == now_)
+        {
+            slot.task.set_state(
+                TaskState::Ready
+            );
+
+            ready_.push(
+                slot.task.id(),
+                slot.task.effective_priority()
+            );
+
+            continue;
+        }
+
         if (slot.task.state() ==
                 TaskState::Sleeping &&
-            slot.wake_at <= now_) {
-
+            slot.wake_at == now_)
+        {
             slot.task.set_state(
                 TaskState::Ready
             );
@@ -362,9 +440,37 @@ void Engine::wake_sleepers() {
     }
 }
 
+void Engine::check_deadlines() {
+    const std::vector<std::size_t> order =
+        ordered_slot_indices_by_task_id();
+
+    for (std::size_t index : order) {
+        Slot& slot = slots_[index];
+
+        const std::optional<Tick> deadline =
+            slot.task.absolute_deadline();
+
+        if (!deadline.has_value()) {
+            continue;
+        }
+
+        if (slot.deadline_missed) {
+            continue;
+        }
+
+        if (deadline.value() == now_ &&
+            slot.task.state() !=
+                TaskState::Completed)
+        {
+            slot.deadline_missed = true;
+        }
+    }
+}
+
 void Engine::preempt_if_needed() {
     if (running_ == kNone ||
-        ready_.empty()) {
+        ready_.empty())
+    {
         return;
     }
 
@@ -372,8 +478,8 @@ void Engine::preempt_if_needed() {
         slots_[running_];
 
     if (ready_.peek_priority() >
-        current.task.effective_priority()) {
-
+        current.task.effective_priority())
+    {
         current.task.set_state(
             TaskState::Ready
         );
@@ -402,7 +508,8 @@ void Engine::resolve() {
             slots_[running_].task.set_state(
                 TaskState::Running
             );
-        } else {
+        }
+        else {
             preempt_if_needed();
 
             if (running_ == kNone) {
@@ -413,9 +520,10 @@ void Engine::resolve() {
         Slot& slot =
             slots_[running_];
 
+        // Implicit END.
         if (slot.pc >=
-            slot.task.program().size()) {
-
+            slot.task.program().size())
+        {
             if (!slot.held_mutexes.empty()) {
                 throw std::logic_error(
                     "task completed while holding a mutex"
@@ -426,7 +534,10 @@ void Engine::resolve() {
                 TaskState::Completed
             );
 
+            slot.completion_time = now_;
+
             running_ = kNone;
+
             continue;
         }
 
@@ -503,8 +614,8 @@ void Engine::resolve() {
                 running_ = kNone;
 
                 if (protocol_ ==
-                    Protocol::PIP) {
-
+                    Protocol::PIP)
+                {
                     propagate_priority(
                         mutex.owner
                     );
@@ -542,8 +653,8 @@ void Engine::resolve() {
                     mutex.owner = kIdle;
 
                     if (protocol_ ==
-                        Protocol::PIP) {
-
+                        Protocol::PIP)
+                    {
                         recompute_priority(
                             owner_id
                         );
@@ -579,16 +690,14 @@ void Engine::resolve() {
                     mutex_id
                 );
 
-                // Keep it BLOCKED until its cached
-                // effective priority has been recomputed.
                 waiter.blocked_on =
                     kNoMutex;
 
                 ++waiter.pc;
 
                 if (protocol_ ==
-                    Protocol::PIP) {
-
+                    Protocol::PIP)
+                {
                     recompute_priority(
                         owner_id
                     );
@@ -614,19 +723,35 @@ void Engine::resolve() {
 }
 
 void Engine::step() {
+    if (finished_) {
+        return;
+    }
+
     // B1
     resolve();
 
     // B2
-    wake_sleepers();
+    activate_at_now();
 
     // B3
     resolve();
 
-    // Tick execution
+    // B4
+    check_deadlines();
+
+    // End instant: no tick executes here.
+    if (all_completed() ||
+        now_ >= horizon_)
+    {
+        finished_ = true;
+        return;
+    }
+
+    // B5/B6: execute one tick.
     if (running_ == kNone) {
         timeline_.push_back(kIdle);
-    } else {
+    }
+    else {
         Slot& slot =
             slots_[running_];
 
@@ -646,8 +771,8 @@ void Engine::step() {
             ++slot.pc;
 
             if (slot.pc >=
-                slot.task.program().size()) {
-
+                slot.task.program().size())
+            {
                 if (!slot.held_mutexes.empty()) {
                     throw std::logic_error(
                         "task completed while holding a mutex"
@@ -658,12 +783,19 @@ void Engine::step() {
                     TaskState::Completed
                 );
 
+                slot.completion_time =
+                    now_ + 1;
+
                 running_ = kNone;
             }
         }
     }
 
     ++now_;
+
+    if (all_completed()) {
+        finished_ = true;
+    }
 }
 
 void Engine::run(Tick ticks) {
@@ -673,7 +805,10 @@ void Engine::run(Tick ticks) {
         );
     }
 
-    for (Tick i = 0; i < ticks; ++i) {
+    for (Tick i = 0;
+         i < ticks && !finished_;
+         ++i)
+    {
         step();
     }
 }
@@ -687,8 +822,27 @@ bool Engine::run_until_done(
         );
     }
 
-    while (!all_completed() &&
-           now_ < max_ticks) {
+    while (!finished_ &&
+           now_ < max_ticks)
+    {
+        step();
+    }
+
+    // If the horizon itself was reached,
+    // process its boundary so deadline misses
+    // at exactly the horizon are observed.
+    if (!finished_ &&
+        now_ == horizon_ &&
+        horizon_ <= max_ticks)
+    {
+        step();
+    }
+
+    return all_completed();
+}
+
+bool Engine::run_to_horizon() {
+    while (!finished_) {
         step();
     }
 
