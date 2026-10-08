@@ -1,0 +1,13 @@
+NONE status=COMPLETED end=11 trace_hash=4574918066872200698
+timeline: 0 0 1 2 1 1 1 0 0 2 0
+T0 response=11 blocked=0 inversion=0 legit_blocking=0 deadline_miss=no
+T1 response=5 blocked=0 inversion=0 legit_blocking=0 deadline_miss=no
+T2 response=7 blocked=5 inversion=3 legit_blocking=2 deadline_miss=yes
+preemptions=3 context_switches=6 busy_ticks=11/11
+
+PIP status=COMPLETED end=11 trace_hash=14027694987569717515
+timeline: 0 0 1 2 0 0 2 1 1 1 0
+T0 response=11 blocked=0 inversion=0 legit_blocking=0 deadline_miss=no
+T1 response=8 blocked=0 inversion=0 legit_blocking=0 deadline_miss=no
+T2 response=4 blocked=2 inversion=0 legit_blocking=2 deadline_miss=no
+preemptions=3 context_switches=6 busy_ticks=11/11
