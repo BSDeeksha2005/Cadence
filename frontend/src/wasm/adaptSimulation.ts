@@ -9,10 +9,6 @@ import type {
   EventCategory,
 } from '@/data/demoScenario';
 
-function toArray<T>(value: any): T[] {
-  return Array.from(value as any) as T[];
-}
-
 function taskLabel(id: number): string {
   return `T${id + 1}`;
 }
@@ -119,7 +115,7 @@ function eventDetail(
 }
 
 export function adaptSimulation(result: WasmResult): Scenario {
-  const tasks: Task[] = toArray<any>(result.tasks).map((task) => ({
+  const tasks: Task[] = result.tasks.map((task) => ({
     id: taskLabel(task.id),
     name: task.name,
     priority: task.priority,
@@ -137,7 +133,7 @@ export function adaptSimulation(result: WasmResult): Scenario {
   const grid: TickCell[][] = tasks.map((task) => {
     const numericId = Number(task.id.slice(1)) - 1;
 
-    return toArray<any>(result.ticks).map((tick) => {
+    return result.ticks.map((tick) => {
       const snapshot = tick.tasks.find((candidate) => candidate.id === numericId);
 
       if (!snapshot) {
@@ -167,7 +163,7 @@ export function adaptSimulation(result: WasmResult): Scenario {
     });
   });
 
-  const events: SimEvent[] = toArray<any>(result.events).map((event) => {
+  const events: SimEvent[] = result.events.map((event) => {
     const task =
       event.task >= 0 && event.task !== 2147483647
         ? taskLabel(event.task)
