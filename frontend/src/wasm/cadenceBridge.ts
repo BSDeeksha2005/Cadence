@@ -101,7 +101,7 @@ export async function runS1(
     scenarioName: result.scenarioName,
     horizon: Number(result.horizon),
 
-    tasks: Array.from(result.tasks).map((task: any) => ({
+    tasks: result.tasks.map((task: any) => ({
       id: Number(task.id),
       name: task.name,
       priority: Number(task.priority),
@@ -118,7 +118,7 @@ export async function runS1(
       time: Number(tick.time),
       running: Number(tick.running),
 
-      tasks: Array.from(tick.tasks).map((task: any) => ({
+      tasks: tick.tasks.map((task: any) => ({
         id: Number(task.id),
         state: task.state,
         basePriority: Number(task.basePriority),
