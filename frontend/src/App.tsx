@@ -8,6 +8,7 @@ import Timeline from '@/components/Timeline';
 import EventLog from '@/components/EventLog';
 import ComparisonPanel from './components/ComparisonPanel';
 import Inspector from '@/components/Inspector';
+import ScenarioBuilder from '@/components/ScenarioBuilder';
 
 import { runS1, type WasmResult } from '@/wasm/cadenceBridge';
 import { adaptSimulation } from '@/wasm/adaptSimulation';
@@ -131,42 +132,12 @@ export default function App() {
       />
 
       {view === 'build' ? (
-        <main className="flex-1 w-full max-w-4xl mx-auto px-5 lg:px-8 py-12">
-          <section
-            className="rounded-lg border p-6 md:p-8"
-            style={{ backgroundColor: 'var(--elevated)', borderColor: 'var(--border)' }}
-          >
-            <p className="text-xs font-mono uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-              Deterministic single-CPU simulation
-            </p>
-            <h1 className="mt-3 text-2xl font-semibold">Compare priority inversion protocols</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--text-muted)' }}>
-              Run the normative S1 scenario under NONE and Priority Inheritance (PIP).
-              Inspect the execution timeline, task states, mutex ownership, event trace,
-              and derived metrics.
-            </p>
-            <div className="mt-6 flex flex-wrap items-end gap-4">
-              <label className="text-xs font-mono">
-                <span className="mb-2 block uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Scenario</span>
-                <select className="cad-input min-w-48" value="S1" disabled>
-                  <option value="S1">S1 · Priority inversion</option>
-                </select>
-              </label>
-              <label className="text-xs font-mono">
-                <span className="mb-2 block uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Selected protocol</span>
-                <select
-                  className="cad-input min-w-32"
-                  value={config.protocol}
-                  onChange={(event) => setConfig({ ...config, protocol: event.target.value as 'NONE' | 'PIP' })}
-                >
-                  <option value="NONE">NONE</option>
-                  <option value="PIP">PIP</option>
-                </select>
-              </label>
-              <button type="button" className="cad-btn-primary" onClick={handleRun} disabled={isRunning}>
-                {isRunning ? 'Running…' : 'Run comparison'}
-              </button>
-            </div>
+        <main className="flex-1 w-full px-5 lg:px-8 py-8">
+          <ScenarioBuilder
+            config={config}
+            onChange={setConfig}
+            onRun={handleRun}
+          />
 
           {isRunning && (
             <p
@@ -185,7 +156,6 @@ export default function App() {
               {runError}
             </p>
           )}
-          </section>
         </main>
       ) : scenario ? (
         <main className="flex-1 w-full max-w-[1400px] mx-auto px-5 lg:px-8 py-6">

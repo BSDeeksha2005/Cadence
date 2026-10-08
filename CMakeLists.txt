@@ -14,12 +14,6 @@ set(CADENCE_WARNINGS
     -Werror
 )
 
-option(CADENCE_SANITIZE "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
-if(CADENCE_SANITIZE AND NOT MSVC)
-    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=address,undefined)
-endif()
-
 add_library(cadence_core
     src/task_state.cpp
     src/operation.cpp
@@ -42,18 +36,13 @@ target_compile_options(cadence_core
         ${CADENCE_WARNINGS}
 )
 
-add_library(cadence_json_adapter src/scenario_json.cpp)
-target_include_directories(cadence_json_adapter PUBLIC include)
-target_compile_options(cadence_json_adapter PRIVATE ${CADENCE_WARNINGS})
-target_link_libraries(cadence_json_adapter PUBLIC cadence_core)
-
 add_executable(cadence
     src/main.cpp
 )
 
 target_link_libraries(cadence
     PRIVATE
-        cadence_json_adapter
+        cadence_core
 )
 
 target_compile_options(cadence
@@ -87,12 +76,11 @@ add_executable(cadence_tests
     tests/test_continuation.cpp
     tests/test_determinism.cpp
     tests/test_s1.cpp
-    tests/test_scenario_json.cpp
 )
 
 target_link_libraries(cadence_tests
     PRIVATE
-        cadence_json_adapter
+        cadence_core
         GTest::gtest_main
 )
 

@@ -9,8 +9,12 @@ import type {
   EventCategory,
 } from '@/data/demoScenario';
 
+function toArray<T>(value: any): T[] {
+  return Array.from(value as any) as T[];
+}
+
 function taskLabel(id: number): string {
-  return `T${id}`;
+  return `T${id + 1}`;
 }
 
 function mutexLabel(id: number): string {
@@ -18,8 +22,8 @@ function mutexLabel(id: number): string {
 }
 
 function priorityLabel(priority: number): Task['priorityLabel'] {
-  if (priority >= 22) return 'High';
-  if (priority >= 11) return 'Medium';
+  if (priority === 1) return 'High';
+  if (priority === 2) return 'Medium';
   return 'Low';
 }
 
@@ -29,31 +33,31 @@ function state(value: string): TaskState {
 
 function eventCategory(kind: string): EventCategory {
   switch (kind) {
-    case 'RELEASE':
+    case 'Release':
       return 'release';
-    case 'DISPATCH':
+    case 'Dispatch':
       return 'schedule';
-    case 'PREEMPT':
+    case 'Preempt':
       return 'preempt';
-    case 'LOCK_ACQUIRE':
+    case 'LockAcquire':
       return 'lock';
-    case 'LOCK_BLOCK':
+    case 'LockBlock':
       return 'block';
-    case 'UNLOCK':
+    case 'Unlock':
       return 'unlock';
-    case 'HANDOFF':
+    case 'Handoff':
       return 'schedule';
-    case 'PRIORITY_CHANGE':
+    case 'PriorityChange':
       return 'pip';
-    case 'COMPLETE':
+    case 'Complete':
       return 'complete';
-    case 'DEADLINE_MISS':
+    case 'DeadlineMiss':
       return 'deadline';
-    case 'WAKE':
+    case 'Wake':
       return 'schedule';
-    case 'SLEEP_START':
+    case 'SleepStart':
       return 'schedule';
-    case 'DEADLOCK_DETECTED':
+    case 'DeadlockDetected':
       return 'block';
     default:
       return 'schedule';
@@ -70,43 +74,43 @@ function eventDetail(
   const mutexText = mutex >= 0 ? ` M${mutex}` : '';
 
   switch (kind) {
-    case 'RELEASE':
+    case 'Release':
       return `${task} released → READY`;
 
-    case 'WAKE':
+    case 'Wake':
       return `${task} woke → READY`;
 
-    case 'DISPATCH':
+    case 'Dispatch':
       return `${task} dispatched → RUNNING`;
 
-    case 'PREEMPT':
+    case 'Preempt':
       return `${task} preempted`;
 
-    case 'LOCK_ACQUIRE':
+    case 'LockAcquire':
       return `${task} LOCK${mutexText} — acquired`;
 
-    case 'LOCK_BLOCK':
+    case 'LockBlock':
       return `${task} LOCK${mutexText} → BLOCKED`;
 
-    case 'UNLOCK':
+    case 'Unlock':
       return `${task} UNLOCK${mutexText} — released`;
 
-    case 'HANDOFF':
+    case 'Handoff':
       return `${task} mutex handoff${mutexText}`;
 
-    case 'PRIORITY_CHANGE':
+    case 'PriorityChange':
       return `${task} priority ${a} → ${b}`;
 
-    case 'COMPLETE':
+    case 'Complete':
       return `${task} COMPLETED`;
 
-    case 'DEADLINE_MISS':
+    case 'DeadlineMiss':
       return `${task} DEADLINE MISSED`;
 
-    case 'SLEEP_START':
+    case 'SleepStart':
       return `${task} → SLEEPING`;
 
-    case 'DEADLOCK_DETECTED':
+    case 'DeadlockDetected':
       return `Deadlock detected${task ? ` involving ${task}` : ''}`;
 
     default:
@@ -115,7 +119,7 @@ function eventDetail(
 }
 
 export function adaptSimulation(result: WasmResult): Scenario {
-  const tasks: Task[] = result.tasks.map((task) => ({
+  const tasks: Task[] = toArray<any>(result.tasks).map((task) => ({
     id: taskLabel(task.id),
     name: task.name,
     priority: task.priority,
@@ -125,15 +129,15 @@ export function adaptSimulation(result: WasmResult): Scenario {
     period: task.deadline >= 0 ? task.deadline - task.release : 0,
   }));
 
-  const mutexes: Mutex[] = result.mutexes.map((mutex) => ({
+  const mutexes: Mutex[] = toArray<any>(result.mutexes).map((mutex) => ({
     id: mutexLabel(mutex.id),
     name: mutex.name,
   }));
 
   const grid: TickCell[][] = tasks.map((task) => {
-    const numericId = Number(task.id.slice(1));
+    const numericId = Number(task.id.slice(1)) - 1;
 
-    return result.ticks.map((tick) => {
+    return toArray<any>(result.ticks).map((tick) => {
       const snapshot = tick.tasks.find((candidate) => candidate.id === numericId);
 
       if (!snapshot) {
@@ -158,14 +162,12 @@ export function adaptSimulation(result: WasmResult): Scenario {
             ? mutexLabel(snapshot.blockedOn)
             : undefined,
         effectivePriority:
-          snapshot.effectivePriority !== snapshot.basePriority
-            ? snapshot.effectivePriority
-            : undefined,
+          snapshot.eff !== snapshot.base ? snapshot.eff : undefined,
       };
     });
   });
 
-  const events: SimEvent[] = result.events.map((event) => {
+  const events: SimEvent[] = toArray<any>(result.events).map((event) => {
     const task =
       event.task >= 0 && event.task !== 2147483647
         ? taskLabel(event.task)
