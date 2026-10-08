@@ -1,5 +1,9 @@
 import CadenceModule from './cadence.js';
 
+function toArray<T>(value: ArrayLike<T>): T[] {
+  return Array.from(value);
+}
+
 export interface WasmTask {
   id: number;
   name: string;
@@ -129,7 +133,7 @@ export async function runS1(
       mutexes: toArray<any>(tick.mutexes).map((mutex: any) => ({
         id: Number(mutex.id),
         owner: Number(mutex.owner),
-        waiters: mutex.waiters.map((id: number) => Number(id)),
+        waiters: toArray<number>(mutex.waiters).map((id) => Number(id)),
       })),
     })),
 
@@ -141,7 +145,7 @@ export async function runS1(
       mutex: Number(event.mutex),
       a: Number(event.a),
       b: Number(event.b),
-      cycle: event.cycle.map((id: number) => Number(id)),
+      cycle: toArray<number>(event.cycle).map((id) => Number(id)),
     })),
 
     taskMetrics: toArray<any>(result.taskMetrics).map((metric: any) => ({
