@@ -6,6 +6,23 @@ Cadence is a C++17 simulator for fixed-priority scheduling on one CPU. It demons
 
 [Open the live demo](https://cadence-chi-ebon.vercel.app/) · [View the GitHub repository](https://github.com/BSDeeksha2005/Cadence)
 
+## Screenshots
+
+### Scenario builder
+
+![Cadence scenario builder with task priorities, release times, mutexes, and operations](docs/screenshots/scenario-builder.png)
+
+<details>
+<summary>Task operation editor</summary>
+
+![Cadence task operation editor showing compute and mutex operations](docs/screenshots/operation-editor.png)
+
+</details>
+
+### S1 simulation and trace
+
+![Cadence S1 simulation showing the task timeline, metrics comparison, and deterministic event trace](docs/screenshots/s1-simulation-trace.png)
+
 ## What it demonstrates
 
 In the S1 scenario, low-priority task L holds a mutex when high-priority task H needs it. With protocol `NONE`, medium-priority task M can run ahead of L, extending H's wait. With PIP, L temporarily inherits H's priority, finishes the critical section sooner, and releases H.
