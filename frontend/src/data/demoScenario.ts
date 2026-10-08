@@ -63,7 +63,7 @@ export interface SimEvent {
 
 export interface Scenario {
   name: string;
-  protocol: 'PIP' | 'NPP' | 'FPP';
+  protocol: 'NONE' | 'PIP' | 'NPP' | 'FPP';
   ticks: number;
   tasks: Task[];
   mutexes: Mutex[];
