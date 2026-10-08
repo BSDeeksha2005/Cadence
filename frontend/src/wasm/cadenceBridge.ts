@@ -109,12 +109,12 @@ export async function runS1(
       deadline: Number(task.deadline),
     })),
 
-    mutexes: result.mutexes.map((mutex: any) => ({
+    mutexes: toArray<any>(result.mutexes).map((mutex: any) => ({
       id: Number(mutex.id),
       name: mutex.name,
     })),
 
-    ticks: result.ticks.map((tick: any) => ({
+    ticks: toArray<any>(result.ticks).map((tick: any) => ({
       time: Number(tick.time),
       running: Number(tick.running),
 
@@ -126,14 +126,14 @@ export async function runS1(
         blockedOn: Number(task.blockedOn),
       })),
 
-      mutexes: tick.mutexes.map((mutex: any) => ({
+      mutexes: toArray<any>(tick.mutexes).map((mutex: any) => ({
         id: Number(mutex.id),
         owner: Number(mutex.owner),
         waiters: mutex.waiters.map((id: number) => Number(id)),
       })),
     })),
 
-    events: result.events.map((event: any) => ({
+    events: toArray<any>(result.events).map((event: any) => ({
       seq: Number(event.seq),
       time: Number(event.time),
       kind: event.kind,
@@ -144,7 +144,7 @@ export async function runS1(
       cycle: event.cycle.map((id: number) => Number(id)),
     })),
 
-    taskMetrics: result.taskMetrics.map((metric: any) => ({
+    taskMetrics: toArray<any>(result.taskMetrics).map((metric: any) => ({
       id: Number(metric.id),
       response: Number(metric.response),
       startLatency: Number(metric.startLatency),
