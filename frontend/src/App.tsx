@@ -1,17 +1,16 @@
-import { useCallback, useMemo, useState } from 'react';
-import type { Scenario } from '@/data/demoScenario';
+import { useMemo, useState, useCallback } from 'react';
+import {
+  demoScenario,
+  type TickCell,
+  type Task,
+} from '@/data/demoScenario';
 import type { ScenarioConfig } from '@/lib/builderTypes';
 import { defaultConfig } from '@/lib/builderUtils';
-
 import Header from '@/components/Header';
 import Timeline from '@/components/Timeline';
 import EventLog from '@/components/EventLog';
-import ComparisonPanel from './components/ComparisonPanel';
 import Inspector from '@/components/Inspector';
 import ScenarioBuilder from '@/components/ScenarioBuilder';
-
-import { runS1, type WasmResult } from '@/wasm/cadenceBridge';
-import { adaptSimulation } from '@/wasm/adaptSimulation';
 
 type View = 'build' | 'simulate';
 
@@ -19,42 +18,22 @@ export default function App() {
   const [view, setView] = useState<View>('build');
   const [config, setConfig] = useState<ScenarioConfig>(defaultConfig);
 
-  const [wasmResult, setWasmResult] = useState<WasmResult | null>(null);
-  const [comparisonResults, setComparisonResults] = useState<{
-    none: WasmResult;
-    pip: WasmResult;
-  } | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [runError, setRunError] = useState<string | null>(null);
-
+  // Simulation view state
+  const scenario = demoScenario;
   const [selectedTick, setSelectedTick] = useState<number | null>(null);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>('T1');
   const [hoverTick, setHoverTick] = useState<number | null>(null);
 
-  const scenario: Scenario | null = useMemo(() => {
-    if (!wasmResult) return null;
-    return adaptSimulation(wasmResult);
-  }, [wasmResult]);
-
   const tickIndex = useMemo(() => {
-    const map = new Map<
-      number,
-      { task: Scenario['tasks'][number]; cell: Scenario['grid'][number][number] }[]
-    >();
-
-    if (!scenario) return map;
-
+    const map = new Map<number, { task: Task; cell: TickCell }[]>();
     for (const row of scenario.grid) {
       const task = scenario.tasks.find((t) => t.id === row[0]?.taskId);
       if (!task) continue;
-
       for (const cell of row) {
-        const entries = map.get(cell.tick) ?? [];
-        entries.push({ task, cell });
-        map.set(cell.tick, entries);
+        if (!map.has(cell.tick)) map.set(cell.tick, []);
+        map.get(cell.tick)!.push({ task, cell });
       }
     }
-
     return map;
   }, [scenario]);
 
@@ -66,54 +45,23 @@ export default function App() {
     [],
   );
 
-  const handleRun = useCallback(async () => {
-    setIsRunning(true);
-    setRunError(null);
-
-    try {
-      const [noneResult, pipResult] = await Promise.all([
-        runS1('NONE'),
-        runS1('PIP'),
-      ]);
-
-      const result =
-        config.protocol === 'PIP' ? pipResult : noneResult;
-
-      setWasmResult(result);
-      setComparisonResults({
-        none: noneResult,
-        pip: pipResult,
-      });
-
-      const adapted = adaptSimulation(result);
-
-      setView('simulate');
-      setSelectedTick(null);
-      setSelectedTaskId(adapted.tasks[0]?.id ?? null);
-    } catch (error) {
-      console.error(error);
-      setRunError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to run the C++ simulation.',
-      );
-    } finally {
-      setIsRunning(false);
-    }
-  }, [config.protocol]);
+  const handleRun = useCallback(() => {
+    setView('simulate');
+    setSelectedTick(null);
+    setSelectedTaskId(scenario.tasks[0]?.id ?? null);
+  }, [scenario.tasks]);
 
   const handleBack = useCallback(() => {
     setView('build');
   }, []);
 
   const selectedTask =
-    scenario?.tasks.find((t) => t.id === selectedTaskId) ?? null;
-
+    scenario.tasks.find((t) => t.id === selectedTaskId) ?? null;
   const selectedCell =
-    selectedTask && selectedTick !== null && scenario
+    selectedTask && selectedTick !== null
       ? scenario.grid
-          .find((row) => row[0]?.taskId === selectedTask.id)
-          ?.find((cell) => cell.tick === selectedTick) ?? null
+          .find((r) => r[0]?.taskId === selectedTask.id)
+          ?.find((c) => c.tick === selectedTick) ?? null
       : null;
 
   return (
@@ -123,11 +71,7 @@ export default function App() {
     >
       <Header
         view={view}
-        scenarioName={
-          view === 'build'
-            ? config.name || 'Untitled'
-            : scenario?.name ?? 'Simulation'
-        }
+        scenarioName={view === 'build' ? config.name || 'Untitled' : scenario.name}
         onBackToBuilder={handleBack}
       />
 
@@ -138,27 +82,10 @@ export default function App() {
             onChange={setConfig}
             onRun={handleRun}
           />
-
-          {isRunning && (
-            <p
-              className="mt-4 text-xs font-mono"
-              style={{ color: 'var(--textMuted)' }}
-            >
-              Running C++ simulation…
-            </p>
-          )}
-
-          {runError && (
-            <p
-              className="mt-4 text-xs font-mono"
-              style={{ color: 'var(--blockedText)' }}
-            >
-              {runError}
-            </p>
-          )}
         </main>
-      ) : scenario ? (
+      ) : (
         <main className="flex-1 w-full max-w-[1400px] mx-auto px-5 lg:px-8 py-6">
+          {/* Demo data notice */}
           <div
             className="mb-4 px-4 py-2 rounded border text-[11px] font-mono"
             style={{
@@ -167,18 +94,11 @@ export default function App() {
               color: 'var(--text-muted)',
             }}
           >
-            Real C++ engine · WASM · {scenario.protocol}
+            Showing demo simulation data — the configured scenario will be
+            connected to the engine in a later step.
           </div>
-
           <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-6">
             <div className="min-w-0 flex flex-col gap-6">
-              {comparisonResults && (
-                <ComparisonPanel
-                  none={comparisonResults.none}
-                  pip={comparisonResults.pip}
-                />
-              )}
-
               <Timeline
                 scenario={scenario}
                 selectedTaskId={selectedTaskId}
@@ -187,19 +107,17 @@ export default function App() {
                 onSelectCell={handleSelectCell}
                 onHoverTick={setHoverTick}
               />
-
               <EventLog
                 events={scenario.events}
                 selectedTick={selectedTick}
                 hoverTick={hoverTick}
-                onSelectTick={(tick) => setSelectedTick(tick)}
+                onSelectTick={(t) => setSelectedTick(t)}
               />
             </div>
-
             <aside className="min-w-0">
               <Inspector
                 task={selectedTask}
-                cell={selectedCell}
+                cell={selectedCell ?? null}
                 tickTasks={
                   selectedTick !== null
                     ? tickIndex.get(selectedTick) ?? []
@@ -210,37 +128,21 @@ export default function App() {
             </aside>
           </div>
         </main>
-      ) : (
-        <main className="flex-1 flex items-center justify-center">
-          <span
-            className="text-sm font-mono"
-            style={{ color: 'var(--textMuted)' }}
-          >
-            No simulation result.
-          </span>
-        </main>
       )}
 
       <footer className="border-t" style={{ borderColor: 'var(--border)' }}>
         <div className="max-w-[1400px] mx-auto px-5 lg:px-8 py-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
           <span style={{ color: 'var(--text-muted)' }}>Cadence</span>
           <span style={{ color: 'var(--border-strong)' }}>·</span>
-
           <span style={{ color: 'var(--text-muted)' }}>
             {view === 'build'
               ? 'Scenario builder — not yet simulated'
-              : 'C++ engine — WebAssembly'}
+              : 'Demo data — not connected to engine'}
           </span>
-
-          <span
-            className="ml-auto font-mono"
-            style={{ color: 'var(--text-muted)' }}
-          >
+          <span className="ml-auto font-mono" style={{ color: 'var(--text-muted)' }}>
             {view === 'build'
               ? `${config.tasks.length} task${config.tasks.length !== 1 ? 's' : ''} · ${config.mutexes.length} mutex${config.mutexes.length !== 1 ? 'es' : ''} · ${config.horizon} ticks · ${config.protocol}`
-              : scenario
-                ? `${scenario.ticks} ticks · ${scenario.tasks.length} tasks · ${scenario.mutexes.length} mutex`
-                : ''}
+              : `${scenario.ticks} ticks · ${scenario.tasks.length} tasks · ${scenario.mutexes.length} mutex`}
           </span>
         </div>
       </footer>
