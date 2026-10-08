@@ -129,7 +129,7 @@ export function adaptSimulation(result: WasmResult): Scenario {
     period: task.deadline >= 0 ? task.deadline - task.release : 0,
   }));
 
-  const mutexes: Mutex[] = toArray<any>(result.mutexes).map((mutex) => ({
+  const mutexes: Mutex[] = result.mutexes.map((mutex) => ({
     id: mutexLabel(mutex.id),
     name: mutex.name,
   }));
