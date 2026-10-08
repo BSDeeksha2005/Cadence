@@ -1,0 +1,30 @@
+{
+  "name": "S1",
+  "horizon": 30,
+  "mutexes": ["R"],
+  "tasks": [
+    {
+      "id": 0,
+      "name": "L",
+      "priority": 1,
+      "release": 0,
+      "program": [["COMPUTE", 1], ["LOCK", "R"], ["COMPUTE", 3], ["UNLOCK", "R"], ["COMPUTE", 1]]
+    },
+    {
+      "id": 1,
+      "name": "M",
+      "priority": 2,
+      "release": 2,
+      "deadline": 10,
+      "program": [["COMPUTE", 4]]
+    },
+    {
+      "id": 2,
+      "name": "H",
+      "priority": 3,
+      "release": 3,
+      "deadline": 6,
+      "program": [["COMPUTE", 1], ["LOCK", "R"], ["COMPUTE", 1], ["UNLOCK", "R"]]
+    }
+  ]
+}

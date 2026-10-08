@@ -4,6 +4,7 @@
 #include "cadence/event.hpp"
 #include "cadence/metrics.hpp"
 #include "cadence/scenario.hpp"
+#include "cadence/adapter/scenario_json.hpp"
 
 namespace {
 
@@ -53,35 +54,55 @@ void print_run(
         << "\n\n";
 }
 
+void print_usage(const char* program) {
+    std::cerr << "Usage: " << program
+              << " [--scenario FILE] [--protocol NONE|PIP|BOTH]\n";
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
-    const cadence::Scenario scenario = cadence::make_s1();
+    try {
+        cadence::Scenario scenario = cadence::make_s1();
+        std::string protocol = "BOTH";
+        bool scenario_set = false;
 
-    if (argc == 1) {
-        print_run(scenario, cadence::Protocol::NONE);
-        print_run(scenario, cadence::Protocol::PIP);
+        for (int i = 1; i < argc; ++i) {
+            const std::string argument(argv[i]);
+            if (argument == "--scenario" && i + 1 < argc) {
+                scenario = cadence::load_scenario_json_file(argv[++i]);
+                scenario_set = true;
+            } else if (argument == "--protocol" && i + 1 < argc) {
+                protocol = argv[++i];
+            } else if (argument == "--none") {
+                protocol = "NONE";
+            } else if (argument == "--pip") {
+                protocol = "PIP";
+            } else if (argument == "--both") {
+                protocol = "BOTH";
+            } else if (argument == "--help" || argument == "-h") {
+                print_usage(argv[0]);
+                return 0;
+            } else {
+                print_usage(argv[0]);
+                return 2;
+            }
+        }
+
+        if (!scenario_set && argc == 1) scenario = cadence::make_s1();
+        if (protocol == "BOTH") {
+            print_run(scenario, cadence::Protocol::NONE);
+            print_run(scenario, cadence::Protocol::PIP);
+        } else if (protocol == "NONE") {
+            print_run(scenario, cadence::Protocol::NONE);
+        } else if (protocol == "PIP") {
+            print_run(scenario, cadence::Protocol::PIP);
+        } else {
+            throw std::invalid_argument("protocol must be NONE, PIP, or BOTH");
+        }
         return 0;
+    } catch (const std::exception& error) {
+        std::cerr << "cadence: " << error.what() << '\n';
+        return 2;
     }
-
-    const std::string arg(argv[1]);
-
-    if (arg == "--none") {
-        print_run(scenario, cadence::Protocol::NONE);
-        return 0;
-    }
-
-    if (arg == "--pip") {
-        print_run(scenario, cadence::Protocol::PIP);
-        return 0;
-    }
-
-    if (arg == "--both") {
-        print_run(scenario, cadence::Protocol::NONE);
-        print_run(scenario, cadence::Protocol::PIP);
-        return 0;
-    }
-
-    std::cerr << "Usage: cadence [--none|--pip|--both]\n";
-    return 2;
 }

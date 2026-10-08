@@ -1,0 +1,36 @@
+{
+  "name": "S2 — Chained inheritance",
+  "horizon": 30,
+  "mutexes": ["A", "B"],
+  "tasks": [
+    {
+      "id": 0,
+      "name": "L",
+      "priority": 1,
+      "release": 0,
+      "program": [["LOCK", "A"], ["COMPUTE", 4], ["UNLOCK", "A"], ["COMPUTE", 1]]
+    },
+    {
+      "id": 1,
+      "name": "M",
+      "priority": 2,
+      "release": 1,
+      "program": [["LOCK", "B"], ["LOCK", "A"], ["COMPUTE", 1], ["UNLOCK", "A"], ["UNLOCK", "B"], ["COMPUTE", 1]]
+    },
+    {
+      "id": 2,
+      "name": "H",
+      "priority": 3,
+      "release": 2,
+      "deadline": 5,
+      "program": [["LOCK", "B"], ["COMPUTE", 1], ["UNLOCK", "B"], ["COMPUTE", 1]]
+    },
+    {
+      "id": 3,
+      "name": "X",
+      "priority": 2,
+      "release": 2,
+      "program": [["COMPUTE", 2]]
+    }
+  ]
+}

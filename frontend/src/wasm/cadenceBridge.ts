@@ -1,5 +1,9 @@
 import CadenceModule from './cadence.js';
 
+function toArray<T>(value: ArrayLike<T>): T[] {
+  return Array.from(value);
+}
+
 export interface WasmTask {
   id: number;
   name: string;
