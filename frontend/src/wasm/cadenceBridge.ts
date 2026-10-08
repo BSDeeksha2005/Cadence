@@ -75,13 +75,13 @@ export interface WasmResult {
   contextSwitches: number;
 }
 
-type CadenceModule = Awaited<ReturnType<typeof CadenceModule>>;
+type CadenceModule = Awaited<ReturnType<typeof CadenceModuleFactory>>;
 
 let modulePromise: Promise<CadenceModule> | null = null;
 
 function getModule() {
   if (!modulePromise) {
-    modulePromise = CadenceModule();
+    modulePromise = CadenceModuleFactory();
   }
 
   return modulePromise;
